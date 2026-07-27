@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#152238" />
+  <title>AI Travel Director</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">PERSONAL TRAVEL ASSISTANT</p>
+        <h1>AI Travel Director</h1>
+      </div>
+      <div class="top-actions">
+        <button id="installButton" class="install-button" hidden>Install app</button>
+        <button id="profileButton" class="icon-button" aria-label="Open traveler profile">⚙️</button>
+      </div>
+    </header>
+
+    <div id="connectionBanner" class="connection-banner" hidden>Offline mode: saved trips remain available.</div>
+
+    <main>
+      <section id="homeView" class="view active">
+        <div class="hero-card">
+          <div>
+            <p class="eyebrow">NEXT TRIP</p>
+            <h2 id="tripTitle">Plan your next journey</h2>
+            <p id="tripSummary">Tell the AI where you want to go, your budget, and what you enjoy.</p>
+          </div>
+          <button id="startPlanningButton" class="primary-button">Start planning</button>
+        </div>
+
+        <section class="section-block">
+          <div class="section-heading">
+            <h3>Recommended for you</h3>
+            <button id="refreshRecommendations" class="text-button">Refresh</button>
+          </div>
+          <div id="recommendationList" class="card-list"></div>
+        </section>
+
+        <section class="section-block">
+          <div class="section-heading">
+            <h3>Community insights</h3>
+            <button id="shareExperienceButton" class="text-button">Share yours</button>
+          </div>
+          <div id="communityList" class="card-list"></div>
+        </section>
+      </section>
+
+      <section id="plannerView" class="view">
+        <div class="section-heading sticky-heading">
+          <div>
+            <p class="eyebrow">AI PLANNER</p>
+            <h2>Build your trip</h2>
+          </div>
+          <button class="icon-button back-button" data-target="homeView" aria-label="Go back">✕</button>
+        </div>
+
+        <div id="chatMessages" class="chat-messages"></div>
+        <form id="chatForm" class="chat-form">
+          <input id="chatInput" type="text" placeholder="Example: 4 days in Chicago under $1,200" autocomplete="off" />
+          <button class="primary-button" type="submit">Send</button>
+        </form>
+      </section>
+
+      <section id="itineraryView" class="view">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">LIVE ITINERARY</p>
+            <h2>Your trip</h2>
+          </div>
+          <button id="clearTripButton" class="text-button danger-text">Clear</button>
+        </div>
+        <div id="itineraryContent"></div>
+      </section>
+
+      <section id="safetyView" class="view">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">SAFETY TOOLS</p>
+            <h2>Travel assistance</h2>
+          </div>
+        </div>
+
+        <div class="safety-grid">
+          <button id="shareLocationButton" class="action-card">
+            <span class="action-icon">📍</span>
+            <strong>Share location</strong>
+            <small>Start a consent-based location session</small>
+          </button>
+          <button id="lostButton" class="action-card">
+            <span class="action-icon">🧭</span>
+            <strong>I’m lost</strong>
+            <small>Get route and safe-place guidance</small>
+          </button>
+          <button id="unsafeButton" class="action-card emergency-card">
+            <span class="action-icon">🆘</span>
+            <strong>I feel unsafe</strong>
+            <small>Show emergency steps immediately</small>
+          </button>
+          <button id="checkInButton" class="action-card">
+            <span class="action-icon">✅</span>
+            <strong>Safety check-in</strong>
+            <small>Record that you are okay</small>
+          </button>
+        </div>
+
+        <div id="safetyOutput" class="status-panel" aria-live="polite">
+          <strong>Status:</strong> No active safety session.
+        </div>
+      </section>
+
+      <section id="communityView" class="view">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">TRAVELER COMMUNITY</p>
+            <h2>Share an experience</h2>
+          </div>
+          <button class="icon-button back-button" data-target="homeView" aria-label="Go back">✕</button>
+        </div>
+
+        <form id="experienceForm" class="form-card">
+          <label>
+            Place or experience
+            <input id="experiencePlace" required placeholder="Example: Edinburgh Castle" />
+          </label>
+          <label>
+            Rating
+            <select id="experienceRating" required>
+              <option value="5">5 — Excellent</option>
+              <option value="4">4 — Very good</option>
+              <option value="3">3 — Good</option>
+              <option value="2">2 — Fair</option>
+              <option value="1">1 — Poor</option>
+            </select>
+          </label>
+          <label>
+            What should future travelers know?
+            <textarea id="experienceText" required rows="5" placeholder="Share timing, accessibility, cost, crowd, or transportation tips."></textarea>
+          </label>
+          <label>
+            Best for
+            <select id="experienceAudience">
+              <option value="Everyone">Everyone</option>
+              <option value="Solo travelers">Solo travelers</option>
+              <option value="Families">Families</option>
+              <option value="Budget travelers">Budget travelers</option>
+              <option value="Travelers with mobility needs">Travelers with mobility needs</option>
+              <option value="Food lovers">Food lovers</option>
+            </select>
+          </label>
+          <label class="checkbox-row">
+            <input id="experienceAnonymous" type="checkbox" checked />
+            Post anonymously
+          </label>
+          <button class="primary-button" type="submit">Save experience</button>
+        </form>
+      </section>
+
+      <section id="profileView" class="view">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">PERSONALIZATION</p>
+            <h2>Traveler profile</h2>
+          </div>
+          <button class="icon-button back-button" data-target="homeView" aria-label="Go back">✕</button>
+        </div>
+
+        <form id="profileForm" class="form-card">
+          <label>
+            Travel interests
+            <input id="profileInterests" placeholder="history, food, nature, quiet places" />
+          </label>
+          <label>
+            Typical budget per trip
+            <input id="profileBudget" type="number" min="0" step="50" placeholder="1500" />
+          </label>
+          <label>
+            Travel pace
+            <select id="profilePace">
+              <option value="relaxed">Relaxed</option>
+              <option value="balanced">Balanced</option>
+              <option value="active">Active</option>
+            </select>
+          </label>
+          <label>
+            Dietary preferences
+            <input id="profileDiet" placeholder="vegetarian, halal, gluten-free" />
+          </label>
+          <label>
+            Maximum walking time
+            <select id="profileWalking">
+              <option value="10">10 minutes</option>
+              <option value="20">20 minutes</option>
+              <option value="30">30 minutes</option>
+              <option value="45">45 minutes</option>
+            </select>
+          </label>
+          <button class="primary-button" type="submit">Save preferences</button>
+        </form>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Primary navigation">
+      <button class="nav-item active" data-view="homeView"><span>🏠</span>Home</button>
+      <button class="nav-item" data-view="plannerView"><span>✨</span>Plan</button>
+      <button class="nav-item" data-view="itineraryView"><span>🗓️</span>Trip</button>
+      <button class="nav-item" data-view="safetyView"><span>🛡️</span>Safety</button>
+    </nav>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
