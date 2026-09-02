@@ -16,8 +16,8 @@ import {
   uploadExperiencePhotos,
   requestPhotoAnalysis,
   trackAppEvent
-} from "./firebase-client.js?v=10";
-import { renderGoogleMap } from "./maps.js?v=10";
+} from "./firebase-client.js?v=11";
+import { renderGoogleMap } from "./maps.js?v=11";
 
 const STORAGE_KEY = "aitd_v3_state";
 const ONBOARDING_KEY = "aitd_onboarding_v1";
@@ -211,7 +211,13 @@ function renderRecommendations() {
 }
 
 function communityItems() {
-  return state.communityLoaded ? state.communityPosts : state.experiences.slice(-4).reverse();
+  const combined = new Map();
+  state.communityPosts.forEach(item => combined.set(`shared:${String(item.id)}`, item));
+  [...state.experiences].reverse().forEach(item => {
+    const duplicate = state.communityPosts.some(shared => String(shared.id) === String(item.id));
+    if (!duplicate) combined.set(`private:${String(item.id)}`, { ...item, isShared: false });
+  });
+  return [...combined.values()];
 }
 
 function filteredCommunityItems() {
@@ -257,7 +263,7 @@ function renderCommunity() {
           <h3>${escapeHTML(item.place)} · ${"★".repeat(Math.max(1, Number(item.rating) || 1))}</h3>
           <div class="community-byline">${!item.anonymous && item.ownerId ? `<button class="traveler-profile-link" type="button" data-traveler-profile="${escapeHTML(item.id)}">${escapeHTML(item.authorName || "Traveler")}</button>` : `<span>${escapeHTML(item.authorName || "Anonymous traveler")}</span>`}<span aria-hidden="true">·</span><time>${escapeHTML(dateLabel)}</time></div>
           <p>${escapeHTML(item.text)}</p>
-          <div class="tag-row"><span class="tag">${escapeHTML(item.audience)}</span><span class="tag">Traveler-reported</span></div>
+          <div class="tag-row"><span class="tag">${escapeHTML(item.audience)}</span><span class="tag">${item.isShared ? "Traveler-reported" : "Saved on this device"}</span></div>
           <div class="community-actions">
             <button class="insight-action primary-insight-action${savedInTrip ? " selected" : ""}" type="button" data-community-save="${escapeHTML(item.id)}" ${savedInTrip ? "disabled" : ""}>${savedInTrip ? "✓ In your trip" : state.trip ? "＋ Add to trip" : "✦ Plan with this"}</button>
             <button class="insight-action${savedInCollection ? " selected" : ""}" type="button" data-save-collection="${escapeHTML(item.id)}">${savedInCollection ? "★ Saved" : "☆ Save"}</button>
@@ -273,9 +279,11 @@ function renderCommunity() {
   const loadMore = document.getElementById("communityLoadMore");
   loadMore.hidden = !state.communityLoaded || !state.communityHasMore || Boolean(state.communitySearch) || state.communityAudience !== "All travelers";
   loadMore.disabled = state.communityLoading;
+  const sharedCount = items.filter(item => item.isShared).length;
+  const privateCount = items.length - sharedCount;
   document.getElementById("communityResultSummary").textContent = state.communityLoaded
-    ? `${items.length} shared insight${items.length === 1 ? "" : "s"}${state.communityHasMore ? " loaded" : ""}`
-    : "Showing saved examples until the shared feed connects";
+    ? [sharedCount ? `${sharedCount} shared` : "", privateCount ? `${privateCount} saved privately` : ""].filter(Boolean).join(" · ") || "No insights yet"
+    : "Showing saved insights while the shared feed connects";
 }
 
 function collectionById(collectionId) {
@@ -1070,7 +1078,7 @@ window.addEventListener("online", updateConnectionState);
 window.addEventListener("offline", updateConnectionState);
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; installButton.hidden = false; trackAppEvent("pwa_install_prompt", { status: "available" }); });
 installButton.addEventListener("click", async () => { if (!deferredInstallPrompt) return toast("Use your browser menu to add this app to your home screen"); deferredInstallPrompt.prompt(); const choice = await deferredInstallPrompt.userChoice; trackAppEvent("pwa_install_result", { result: choice.outcome }); deferredInstallPrompt = null; installButton.hidden = true; });
-const APP_VERSION = "10";
+const APP_VERSION = "11";
 async function registerServiceWorker() {
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
