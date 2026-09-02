@@ -51,6 +51,9 @@
           <button class="metric-card" data-view-link="exploreView">
             <span class="metric-icon">⌖</span><span><small>EXPLORE</small><strong>Map your route</strong></span>
           </button>
+          <button class="metric-card" data-view-link="collectionsView">
+            <span class="metric-icon">☆</span><span><small>COLLECTIONS</small><strong id="homeCollectionsMetric">Nothing saved yet</strong></span>
+          </button>
         </section>
 
         <section class="section-block">
@@ -142,6 +145,15 @@
         <div id="itineraryContent"></div>
       </section>
 
+      <section id="collectionsView" class="view" aria-labelledby="collectionsHeading">
+        <div class="section-heading page-heading">
+          <div><p class="eyebrow">PRIVATE TO YOU</p><h1 id="collectionsHeading">Saved collections</h1></div>
+          <button id="newCollectionButton" class="text-button" type="button">New collection</button>
+        </div>
+        <p class="view-intro">Organize traveler recommendations for future trips. Collections sync privately when your account is connected.</p>
+        <div id="collectionsList" class="collections-list"></div>
+      </section>
+
       <section id="safetyView" class="view" aria-labelledby="safetyHeading">
         <div class="safety-hero">
           <p class="eyebrow light">TRAVEL ASSISTANCE</p>
@@ -202,6 +214,16 @@
             <label>Food preferences<input id="profileDiet" placeholder="Example: no alcohol" /></label>
             <label>Maximum walking segment<select id="profileWalking"><option value="10">10 minutes</option><option value="20">20 minutes</option><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">60 minutes</option></select></label>
           </div>
+          <fieldset class="public-profile-fields">
+            <legend>Community profile</legend>
+            <label class="check-row"><input id="publicProfilePrivate" type="checkbox" /> Keep my community profile private</label>
+            <p class="field-note">Profiles are public by default. Your email, budget, food preferences, walking limit, trips, and collections always stay private.</p>
+            <div class="two-column">
+              <label>Home base<input id="publicHomeBase" maxlength="100" placeholder="Example: Tampa, Florida" /></label>
+              <label>Public travel style<input id="publicTravelStyle" maxlength="120" placeholder="Example: Independent city explorer" /></label>
+            </div>
+            <label>Short public bio<textarea id="publicBio" maxlength="300" rows="3" placeholder="Share the kind of travel advice you enjoy giving."></textarea></label>
+          </fieldset>
           <fieldset><legend>AI Travel Assistant</legend><input id="aiPreference" type="hidden" /><div class="ai-choice-grid"><button class="ai-choice" type="button" data-value="Suggestions only">Suggestions only</button><button class="ai-choice" type="button" data-value="Help organize my day">Organize my day</button><button class="ai-choice" type="button" data-value="Automatically optimize free activities">Optimize free time</button><button class="ai-choice" type="button" data-value="Find alternatives when plans change">Handle plan changes</button></div></fieldset>
           <div class="form-actions"><button class="primary-button" type="submit">Save profile</button><button id="syncButton" class="secondary-button" type="button">Sync now</button></div>
         </form>
@@ -232,6 +254,25 @@
         <p id="communityPhotoTravelerNote" class="photo-traveler-note"></p>
         <div id="communityPhotoTags" class="tag-row"></div>
         <small id="communityPhotoPosition" class="photo-position"></small>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="collectionDialog" class="action-dialog" aria-labelledby="collectionDialogTitle">
+    <form id="collectionForm" method="dialog" class="action-dialog-shell">
+      <div class="section-heading compact"><div><p class="eyebrow">SAVE FOR LATER</p><h2 id="collectionDialogTitle">Choose a collection</h2></div><button id="closeCollectionDialog" class="round-button" type="button" aria-label="Close collection dialog">×</button></div>
+      <p id="collectionDialogPlace" class="dialog-context"></p>
+      <label id="existingCollectionLabel">Collection<select id="collectionSelect"></select></label>
+      <label>Or create a new collection<input id="newCollectionName" maxlength="60" placeholder="Example: Weekend trips" /></label>
+      <button class="primary-button" type="submit">Save</button>
+    </form>
+  </dialog>
+
+  <dialog id="travelerProfileDialog" class="action-dialog traveler-profile-dialog" aria-labelledby="travelerProfileName">
+    <div class="action-dialog-shell">
+      <button id="closeTravelerProfile" class="photo-dialog-close" type="button" aria-label="Close traveler profile">×</button>
+      <div id="travelerProfileContent" class="traveler-profile-content">
+        <div class="community-state"><span class="ai-pulse" aria-hidden="true">✦</span><strong>Loading traveler profile…</strong></div>
       </div>
     </div>
   </dialog>
