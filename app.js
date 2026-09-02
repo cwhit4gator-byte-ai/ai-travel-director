@@ -215,20 +215,28 @@ function renderRecommendations() {
 
 
 function inferOvernightLocation(day, fallback = "") {
+  const items = Array.isArray(day?.items) ? day.items : [];
+  const finalEventLocation = [...items].reverse().map(item => String(item?.location || item?.city || "").trim()).find(Boolean);
+  if (finalEventLocation) return finalEventLocation;
+  const explicit = String(day?.location || day?.overnightLocation || "").trim();
+  if (explicit && explicit.toLocaleLowerCase() !== String(fallback).toLocaleLowerCase()) return explicit;
   const title = String(day?.title || "").trim();
-  const routePrefix = title.match(/^(?:day\s*\d+\s*[:—–-]\s*)?([\p{L}][\p{L}'-]*(?:\s+[\p{L}][\p{L}'-]*){0,2})\s*(?:[:—–|]|\s+(?:and|arrival|orientation|highlights|historic|exploration|to)\b)/iu);
-  const inPhrase = title.match(/\b(?:in|around|overnight in|stay in)\s+([\p{L}][\p{L}'-]*(?:\s+[\p{L}][\p{L}'-]*){0,2})/iu);
-  const titleLocation = String(routePrefix?.[1] || inPhrase?.[1] || "").replace(/^day\s*\d+\s*/i, "").trim();
-  const generic = /^(arrival|orientation|departure|flexible|final|history|architecture|local|discovery|day)$/i;
-  if (titleLocation && !generic.test(titleLocation)) return titleLocation;
-  return String(day?.location || day?.overnightLocation || fallback || "").trim();
+  const prefix = String(title.match(/^(?:day\s*\d+\s*[:—–-]\s*)?([^:—–|]{2,60})\s*[:—–|]/iu)?.[1] || "").trim();
+  const words = prefix.split(/\s+/).filter(Boolean);
+  const actionWords = /\b(after|before|pick|picking|rental|car|drive|driving|travel|traveling|journey|arrival|arrive|departure|depart|explore|exploring|visit|visiting|tour|touring|scenic|flexible|final|morning|afternoon|evening|day)\b/i;
+  if (prefix && words.length <= 4 && !actionWords.test(prefix)) return prefix;
+  return "";
 }
 function tripOvernightStops() {
   if (!state.trip) return [];
   const fallback = currentDestination();
   const stops = [];
+  let currentLocation = "";
   (state.trip.itinerary || []).forEach((day, index) => {
-    const location = inferOvernightLocation(day, fallback);
+    const detected = inferOvernightLocation(day, fallback);
+    if (detected) currentLocation = detected;
+    if (!currentLocation) currentLocation = fallback;
+    const location = currentLocation;
     if (!location) return;
     const dayNumber = Number(day.day || index + 1);
     const previous = stops.at(-1);
@@ -256,9 +264,8 @@ function selectedOvernightLocation() {
 }
 function overnightStopLabel(stop) {
   if (!stop) return "";
-  if (!stop.days.length) return stop.location;
-  const nights = stop.days.length === 1 ? `Night after day ${stop.startDay}` : `Consecutive nights after days ${stop.startDay}–${stop.endDay}`;
-  return `${stop.location} · ${nights}`;
+  const nightCount = Math.max(1, stop.days.length);
+  return `${stop.location} · ${nightCount} night${nightCount === 1 ? "" : "s"}`;
 }
 function hotelRecommendations() {
   const stop = selectedOvernightStop();
@@ -294,7 +301,7 @@ function selectHotelForOvernight(hotelName, nightly) {
   const day = (state.trip.itinerary || []).find(item => stop.days.includes(Number(item.day))) || state.trip.itinerary?.[0];
   if (day) {
     day.items = (day.items || []).filter(item => !(item.category === "Hotel" && item.hotelStopId === stop.id));
-    day.items.push({ id: crypto.randomUUID(), time: "Overnight", name: hotelName, category: "Hotel", cost: Number(nightly) * Math.max(1, stop.days.length), hotelStopId: stop.id, overnightLocation: stop.location, note: `Selected for ${stop.location}, covering ${stop.days.length || 1} consecutive night${stop.days.length === 1 ? "" : "s"}. Nightly price is an estimate; confirm the final total and terms with the booking provider.`, done: false });
+    day.items.push({ id: crypto.randomUUID(), time: "Overnight", name: hotelName, category: "Hotel", cost: Number(nightly) * Math.max(1, stop.days.length), hotelStopId: stop.id, overnightLocation: stop.location, note: `Selected for a ${stop.days.length || 1}-night stay in ${stop.location}. Nightly price is an estimate; confirm the final total and terms with the booking provider.`, done: false });
   }
   scheduleSave(); renderAll(); toast(`Hotel selected for ${stop.location}`);
 }
@@ -685,30 +692,18 @@ function normalizeAITrip(result, sourceRequest) {
   const days = Array.isArray(raw?.itinerary) ? raw.itinerary.slice(0, 10) : [];
   const destination = String(raw?.destination || parseDestination(sourceRequest));
   const itinerary = days.map((day, dayIndex) => {
-    const overnightLocation = inferOvernightLocation(day, destination);
-    return {
-      day: Number(day.day || dayIndex + 1),
-      title: String(day.title || `Day ${dayIndex + 1}`),
-      overnightLocation,
-      items: (Array.isArray(day.items) ? day.items : []).slice(0, 5).map((item, itemIndex) => ({
-        id: crypto.randomUUID(), time: String(item.time || `${9 + itemIndex * 2}:00`), name: String(item.name || "Planned activity"), note: String(item.reason || item.note || "Matched to your travel preferences."), category: String(item.category || "AI plan"), cost: Number(item.cost || 0), done: false
-      }))
-    };
+    const rawItems = Array.isArray(day.items) ? day.items : [];
+    const items = rawItems.slice(0, 5).map((item, itemIndex) => ({
+      id: crypto.randomUUID(), time: String(item.time || `${9 + itemIndex * 2}:00`), name: String(item.name || "Planned activity"), location: String(item.location || item.city || ""), note: String(item.reason || item.note || "Matched to your travel preferences."), category: String(item.category || "AI plan"), cost: Number(item.cost || 0), done: false
+    }));
+    const overnightLocation = [...items].reverse().map(item => item.location.trim()).find(Boolean) || inferOvernightLocation(day, destination) || destination;
+    return { day: Number(day.day || dayIndex + 1), title: String(day.title || `Day ${dayIndex + 1}`), overnightLocation, items };
   });
-  return {
-    destination,
-    days: Math.max(1, Math.min(Number(raw?.days || days.length || parseDays(sourceRequest)), 10)),
-    budget: Number(raw?.budget || parseBudget(sourceRequest)),
-    sourceRequest,
-    generatedBy: "openai",
-    createdAt: new Date().toISOString(),
-    overnightLocations: [...new Set(itinerary.map(day => day.overnightLocation).filter(Boolean))],
-    itinerary
-  };
+  return { destination, days: Math.max(1, Math.min(Number(raw?.days || days.length || parseDays(sourceRequest)), 10)), budget: Number(raw?.budget || parseBudget(sourceRequest)), sourceRequest, generatedBy: "openai", createdAt: new Date().toISOString(), overnightLocations: [...new Set(itinerary.map(day => day.overnightLocation).filter(Boolean))], itinerary };
 }
 async function createTripFromRequest(text) {
   if (state.user && state.cloudConfigured && navigator.onLine) {
-    const itineraryRequest = `${text}\nFor every itinerary day, begin the day title with the city or town where the traveler will stay that night, formatted exactly as "City — theme". For a route, use the actual overnight city rather than the country or region.`;
+    const itineraryRequest = `${text}\nGive every itinerary event its city or town in a location field. Set each day’s overnightLocation to the location of that day’s final event. Also begin the day title with that city, formatted exactly as "City — theme". For a route, use the actual city rather than the country or region.`;
     const result = await requestAITrip({ request: itineraryRequest, profile: state.profile, communityInsights: communityItems().slice(0, 8) });
     return { trip: normalizeAITrip(result, text), message: result.message || "I created a personalized draft itinerary. No bookings were made." };
   }
