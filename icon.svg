@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title">
+  <title id="title">AI Travel Director</title>
+  <rect width="512" height="512" rx="112" fill="#0b1830"/>
+  <circle cx="256" cy="256" r="156" fill="#2e72ff"/>
+  <path d="M135 277c56-22 103-41 142-57l-24-92 31-13 58 78 55-22c18-7 35-4 39 7 5 12-7 27-25 34l-58 23-17 96-31 12-22-86-67 27-16 47-23 9-4-46-38-28 22-9 44 20Z" fill="#fff"/>
+  <circle cx="256" cy="256" r="181" fill="none" stroke="#88b0ff" stroke-width="12" opacity=".55"/>
+</svg>
