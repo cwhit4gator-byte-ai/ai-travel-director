@@ -9,6 +9,7 @@ import {
   uploadExperiencePhotos,
   requestPhotoAnalysis
 } from "./firebase-client.js";
+import { renderGoogleMap } from "./maps.js";
 
 const STORAGE_KEY = "aitd_v3_state";
 const defaultProfile = {
@@ -28,7 +29,11 @@ const defaultExperiences = [
   { id: crypto.randomUUID(), place: "Chicago Riverwalk", rating: 4, text: "Weekday mornings are quieter. Several cafés have easy seating and restroom access.", audience: "Everyone", anonymous: true }
 ];
 
-const saved = readJSON(STORAGE_KEY, {});
+const saved = readJSON(STORAGE_KEY, null) || {
+  profile: readJSON("aitd_profile", {}),
+  trip: readJSON("aitd_trip", null),
+  experiences: readJSON("aitd_experiences", null)
+};
 const state = {
   profile: { ...defaultProfile, ...(saved.profile || {}) },
   trip: saved.trip || null,
@@ -282,16 +287,36 @@ function currentDestination() {
   return state.trip?.destination && state.trip.destination !== "Your destination" ? state.trip.destination : "your destination";
 }
 
-function updateMap(query) {
+let mapRequestId = 0;
+
+async function updateMap(query) {
   const normalized = String(query || currentDestination()).trim();
   state.mapQuery = normalized;
   saveLocalState();
   const destination = state.trip?.destination && state.trip.destination !== "Your destination" ? state.trip.destination : "";
   const fullQuery = !destination || normalized.toLowerCase().includes(destination.toLowerCase()) ? normalized : `${normalized} in ${destination}`;
-  document.getElementById("mapFrame").src = `https://www.google.com/maps?q=${encodeURIComponent(fullQuery)}&output=embed`;
-  document.getElementById("mapLabelText").textContent = fullQuery;
+  const requestId = ++mapRequestId;
+  const canvas = document.getElementById("mapCanvas");
+  const fallback = document.getElementById("mapFallback");
+
+  document.getElementById("mapLabelText").textContent = `Finding ${fullQuery}…`;
   document.getElementById("mapSearchInput").value = normalized;
   renderPlaces(normalized);
+
+  try {
+    canvas.hidden = false;
+    fallback.hidden = true;
+    const resolvedLabel = await renderGoogleMap(canvas, fullQuery);
+    if (requestId !== mapRequestId) return;
+    document.getElementById("mapLabelText").textContent = resolvedLabel;
+  } catch (error) {
+    if (requestId !== mapRequestId) return;
+    console.warn("Interactive Maps view unavailable; using embedded fallback.", error);
+    canvas.hidden = true;
+    fallback.hidden = false;
+    fallback.src = `https://www.google.com/maps?q=${encodeURIComponent(fullQuery)}&output=embed`;
+    document.getElementById("mapLabelText").textContent = fullQuery;
+  }
 }
 
 function renderMap() {
