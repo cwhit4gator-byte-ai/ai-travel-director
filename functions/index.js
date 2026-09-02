@@ -51,8 +51,8 @@ export const planTrip = onCall(
     const response = await client.responses.create({
       model: process.env.OPENAI_MODEL || "gpt-5.5",
       instructions: `You are the AI Tour Director for a personal travel app. Build a practical, geographically coherent draft itinerary in the traveler's preferred language. Respect budget, pace, walking limit, food restrictions, stated transportation preferences, interests, and desired AI autonomy. Never make a booking or claim that live prices, availability, opening hours, accessibility, weather, safety conditions, or reservations are verified. Avoid alcohol-centered activities whenever the profile says the traveler does not drink. Treat community insights as subjective traveler reports. Return only valid JSON with this shape:
-{"message":"brief summary and important limitation","trip":{"destination":"city or route","days":4,"budget":1500,"itinerary":[{"day":1,"title":"theme","items":[{"time":"9:30 AM","name":"activity","reason":"why it fits","category":"History","cost":20}]}]}}
-Limit the trip to 10 days and 5 items per day. Use numeric estimated costs only when useful and label uncertainty in the message.`,
+{"message":"brief summary and important limitation","trip":{"destination":"city or route","days":4,"budget":1500,"overnightLocations":["city or district"],"itinerary":[{"day":1,"title":"theme","overnightLocation":"city or district where the traveler sleeps after this day","items":[{"time":"9:30 AM","name":"activity","reason":"why it fits","category":"History","cost":20}]}]}}
+For every day before the trip ends, recommend the geographically practical city or district for that overnight stay. Use the same location on consecutive nights when moving would add needless friction. Include every unique stop in overnightLocations. Limit the trip to 10 days and 5 items per day. Use numeric estimated costs only when useful and label uncertainty in the message.`,
       input: JSON.stringify({ travelerRequest, profile, communityInsights })
     });
 

@@ -71,7 +71,8 @@ const state = {
   mapQuery: saved.mapQuery || "historic architecture",
   currentView: "homeView",
   onboardingStep: 0,
-  hotelFilter: "best"
+  hotelFilter: "best",
+  selectedOvernightLocation: ""
 };
 
 const activityCatalog = [
@@ -213,43 +214,73 @@ function renderRecommendations() {
 }
 
 
+function tripOvernightLocations() {
+  if (!state.trip) return [];
+  const explicit = Array.isArray(state.trip.overnightLocations) ? state.trip.overnightLocations : [];
+  const fromDays = (state.trip.itinerary || []).map(day => day.overnightLocation || day.location || "");
+  const locations = [...new Set([...explicit, ...fromDays].map(value => String(value || "").trim()).filter(Boolean))];
+  return locations.length ? locations : [currentDestination()];
+}
+function selectedOvernightLocation() {
+  const locations = tripOvernightLocations();
+  if (!locations.includes(state.selectedOvernightLocation)) state.selectedOvernightLocation = locations[0] || "";
+  return state.selectedOvernightLocation;
+}
 function hotelRecommendations() {
-  const destination = currentDestination();
-  if (destination === "your destination") return [];
+  const location = selectedOvernightLocation();
+  if (!location) return [];
   const days = Math.max(1, Number(state.trip?.days || 1));
   const tripBudget = Math.max(300, Number(state.trip?.budget || state.profile.budget || 1500));
-  const nightlyBase = Math.max(75, Math.min(450, Math.round((tripBudget * 0.35) / Math.max(1, days - 1))));
+  const locationCount = Math.max(1, tripOvernightLocations().length);
+  const nightlyBase = Math.max(75, Math.min(450, Math.round((tripBudget * .35) / Math.max(1, days - 1) * Math.min(1.15, locationCount))));
   const interests = normalizeInterests(state.profile.interests).toLowerCase();
   const styles = [
     { id: "central", icon: "⌂", name: "Central landmark hotel", area: "Historic center", multiplier: 1.18, reason: interests.includes("history") || interests.includes("architecture") ? "Puts historic sights and architecture close at hand." : "Keeps major sights and transit within easy reach.", amenity: "Walkable location" },
     { id: "value", icon: "◇", name: "Well-rated value stay", area: "Transit-connected district", multiplier: .82, reason: "Balances a lower nightly estimate with straightforward public-transit access.", amenity: "Budget conscious" },
     { id: "quiet", icon: "≈", name: "Quiet neighborhood hotel", area: "Calmer residential area", multiplier: .96, reason: `Fits a ${state.profile.pace || "balanced"} pace with a calmer base away from the busiest blocks.`, amenity: "Quieter setting" }
   ];
-  const filtered = state.hotelFilter === "best" ? styles : [...styles].sort((a, b) => Number(b.id === state.hotelFilter) - Number(a.id === state.hotelFilter));
-  return filtered.map(hotel => ({ ...hotel, nightly: Math.round(nightlyBase * hotel.multiplier), destination }));
+  const ordered = state.hotelFilter === "best" ? styles : [...styles].sort((a,b) => Number(b.id === state.hotelFilter) - Number(a.id === state.hotelFilter));
+  return ordered.map(hotel => ({ ...hotel, nightly: Math.round(nightlyBase * hotel.multiplier), location }));
 }
 function hotelSearchLinks(hotel) {
-  const query = `${hotel.name} in ${hotel.destination}`;
+  const query = `${hotel.name} in ${hotel.location}`;
   return {
     google: `https://www.google.com/travel/search?q=${encodeURIComponent(query)}`,
-    booking: `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(hotel.destination)}`,
-    expedia: `https://www.expedia.com/Hotel-Search?destination=${encodeURIComponent(hotel.destination)}`
+    booking: `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(hotel.location)}`,
+    expedia: `https://www.expedia.com/Hotel-Search?destination=${encodeURIComponent(hotel.location)}`
   };
+}
+function selectHotelForOvernight(hotelName, nightly) {
+  if (!state.trip) return showView("plannerView");
+  const location = selectedOvernightLocation();
+  state.trip.hotelSelections ||= {};
+  state.trip.hotelSelections[location] = { name: hotelName, nightly: Number(nightly), selectedAt: new Date().toISOString() };
+  const day = (state.trip.itinerary || []).find(item => String(item.overnightLocation || item.location || currentDestination()) === location) || state.trip.itinerary?.[0];
+  if (day) {
+    day.items = (day.items || []).filter(item => !(item.category === "Hotel" && item.overnightLocation === location));
+    day.items.push({ id: crypto.randomUUID(), time: "Overnight", name: hotelName, category: "Hotel", cost: Number(nightly), overnightLocation: location, note: `Selected for ${location}. Nightly price is an estimate; confirm the final total and terms with the booking provider.`, done: false });
+  }
+  scheduleSave(); renderAll(); toast(`Hotel selected for ${location}`);
 }
 function renderHotels() {
   const list = document.getElementById("hotelList");
   if (!list) return;
-  const destination = currentDestination();
-  document.getElementById("hotelDestination").textContent = destination === "your destination" ? "Plan a trip to personalize your stays" : `Recommended stay styles for ${destination}`;
-  document.getElementById("hotelIntroText").textContent = destination === "your destination" ? "Choose a destination and the app will recommend stay styles around your budget, pace, and interests." : `Matched to your ${state.profile.pace || "balanced"} pace and ${Number(state.trip?.budget || state.profile.budget || 0).toLocaleString("en-US")} working trip budget.`;
+  const locations = tripOvernightLocations();
+  const picker = document.getElementById("overnightLocationSelect");
+  picker.innerHTML = locations.map(location => `<option value="${escapeHTML(location)}">${escapeHTML(location)}</option>`).join("");
+  picker.disabled = !locations.length;
+  const location = selectedOvernightLocation();
+  if (location) picker.value = location;
+  document.getElementById("hotelDestination").textContent = location ? `Three hotel options for ${location}` : "Plan a trip to personalize your stays";
+  document.getElementById("hotelIntroText").textContent = location ? `Choose this overnight stop first, then compare three stays matched to your ${state.profile.pace || "balanced"} pace and working budget.` : "Choose a destination and the app will identify each overnight stop before showing hotels.";
   const hotels = hotelRecommendations();
   if (!hotels.length) {
-    list.innerHTML = `<div class="empty-state"><span class="empty-icon">▤</span><h2>No destination yet</h2><p>Create a trip first so hotel searches open for the right destination.</p><button class="primary-button" data-view-link="plannerView">Plan a trip</button></div>`;
-    bindViewLinks(list); return;
+    list.innerHTML = `<div class="empty-state"><span class="empty-icon">▤</span><h2>No overnight locations yet</h2><p>Create a trip first so the AI can recommend overnight stops, or add a stop above.</p><button class="primary-button" data-view-link="plannerView">Plan a trip</button></div>`; bindViewLinks(list); return;
   }
   list.innerHTML = hotels.map(hotel => {
     const links = hotelSearchLinks(hotel);
-    return `<article class="hotel-card"><div class="hotel-card-top"><span class="hotel-icon" aria-hidden="true">${hotel.icon}</span><div><p class="eyebrow">${escapeHTML(hotel.area)}</p><h2>${escapeHTML(hotel.name)}</h2></div></div><p class="hotel-reason">${escapeHTML(hotel.reason)}</p><div class="hotel-facts"><span>About <strong>${hotel.nightly.toLocaleString("en-US")}/night</strong></span><span>${escapeHTML(hotel.amenity)}</span></div><div class="hotel-actions"><button class="secondary-button" type="button" data-hotel-map="${escapeHTML(hotel.name)}">View on map</button><button class="secondary-button" type="button" data-hotel-trip="${escapeHTML(hotel.name)}" data-hotel-rate="${hotel.nightly}">Add to trip</button></div><div class="booking-links" aria-label="Search booking providers"><a class="primary-button" href="${links.google}" target="_blank" rel="noopener noreferrer" data-booking-provider="Google Hotels">Search Google Hotels</a><a href="${links.booking}" target="_blank" rel="noopener noreferrer" data-booking-provider="Booking.com">Booking.com</a><a href="${links.expedia}" target="_blank" rel="noopener noreferrer" data-booking-provider="Expedia">Expedia</a></div></article>`;
+    const selected = state.trip?.hotelSelections?.[hotel.location]?.name === hotel.name;
+    return `<article class="hotel-card${selected ? " selected-hotel" : ""}"><div class="hotel-card-top"><span class="hotel-icon" aria-hidden="true">${hotel.icon}</span><div><p class="eyebrow">${escapeHTML(hotel.area)} · ${escapeHTML(hotel.location)}</p><h2>${escapeHTML(hotel.name)}</h2></div></div><p class="hotel-reason">${escapeHTML(hotel.reason)}</p><div class="hotel-facts"><span>About <strong>$${hotel.nightly.toLocaleString("en-US")}/night</strong></span><span>${escapeHTML(hotel.amenity)}</span></div><div class="hotel-actions"><button class="secondary-button" type="button" data-hotel-map="${escapeHTML(hotel.name)}">View on map</button><button class="secondary-button" type="button" data-hotel-select="${escapeHTML(hotel.name)}" data-hotel-rate="${hotel.nightly}" ${selected ? "disabled" : ""}>${selected ? "✓ Selected" : "Select for this stop"}</button></div><div class="booking-links" aria-label="Search booking providers"><a class="primary-button" href="${links.google}" target="_blank" rel="noopener noreferrer" data-booking-provider="Google Hotels">Search Google Hotels</a><a href="${links.booking}" target="_blank" rel="noopener noreferrer" data-booking-provider="Booking.com">Booking.com</a><a href="${links.expedia}" target="_blank" rel="noopener noreferrer" data-booking-provider="Expedia">Expedia</a></div></article>`;
   }).join("");
 }
 
@@ -604,10 +635,11 @@ function buildLocalTrip(text) {
     return {
       day: dayIndex + 1,
       title: dayIndex === 0 ? "Arrival and orientation" : dayIndex === days - 1 ? "Flexible final day" : `${dayActivities[0].category} and local discovery`,
+      overnightLocation: destination,
       items: dayActivities.map((activity, index) => ({ ...activity, id: crypto.randomUUID(), time: index === 0 ? "9:30 AM" : index === 1 ? "1:00 PM" : "4:00 PM", done: false }))
     };
   });
-  return { destination, days, budget, itinerary, sourceRequest: text, generatedBy: "local", createdAt: new Date().toISOString() };
+  return { destination, days, budget, overnightLocations: [destination], itinerary, sourceRequest: text, generatedBy: "local", createdAt: new Date().toISOString() };
 }
 
 function normalizeAITrip(result, sourceRequest) {
@@ -620,9 +652,11 @@ function normalizeAITrip(result, sourceRequest) {
     sourceRequest,
     generatedBy: "openai",
     createdAt: new Date().toISOString(),
+    overnightLocations: [...new Set(days.map(day => String(day.overnightLocation || day.location || raw?.destination || "").trim()).filter(Boolean))],
     itinerary: days.map((day, dayIndex) => ({
       day: Number(day.day || dayIndex + 1),
       title: String(day.title || `Day ${dayIndex + 1}`),
+      overnightLocation: String(day.overnightLocation || day.location || raw?.destination || "Your destination"),
       items: (Array.isArray(day.items) ? day.items : []).slice(0, 5).map((item, itemIndex) => ({
         id: crypto.randomUUID(), time: String(item.time || `${9 + itemIndex * 2}:00`), name: String(item.name || "Planned activity"), note: String(item.reason || item.note || "Matched to your travel preferences."), category: String(item.category || "AI plan"), cost: Number(item.cost || 0), done: false
       }))
@@ -869,16 +903,25 @@ document.getElementById("chatForm").addEventListener("submit", async event => {
 });
 
 document.getElementById("mapSearchForm").addEventListener("submit", event => { event.preventDefault(); const query = document.getElementById("mapSearchInput").value.trim(); if (query) { trackAppEvent("map_search", { method: "typed" }); updateMap(query); } });
-document.querySelectorAll(".filter-chip").forEach(button => button.addEventListener("click", () => { document.querySelectorAll(".filter-chip").forEach(item => item.classList.remove("active")); button.classList.add("active"); trackAppEvent("map_search", { method: "category" }); updateMap(button.dataset.mapFilter); }));
+document.querySelectorAll("[data-map-filter]").forEach(button => button.addEventListener("click", () => { document.querySelectorAll("[data-map-filter]").forEach(item => item.classList.remove("active")); button.classList.add("active"); trackAppEvent("map_search", { method: "category" }); updateMap(button.dataset.mapFilter); }));
 document.getElementById("placeList").addEventListener("click", event => { const button = event.target.closest("[data-add-place]"); if (button) addPlaceToTrip(button.dataset.addPlace, button.dataset.placeCategory, button.dataset.placeCost); });
+document.getElementById("overnightLocationSelect").addEventListener("change", event => { state.selectedOvernightLocation = event.target.value; renderHotels(); });
+document.getElementById("addOvernightLocation").addEventListener("click", () => {
+  const input = document.getElementById("overnightLocationInput");
+  const location = input.value.trim();
+  if (!location) return;
+  if (!state.trip) { toast("Plan a trip before adding an overnight stop"); showView("plannerView"); return; }
+  state.trip.overnightLocations = [...new Set([...(state.trip.overnightLocations || []), location])];
+  state.selectedOvernightLocation = location; input.value = ""; scheduleSave(); renderHotels();
+});
 document.querySelector(".hotel-toolbar").addEventListener("click", event => { const button = event.target.closest("[data-hotel-filter]"); if (!button) return; state.hotelFilter = button.dataset.hotelFilter; document.querySelectorAll("[data-hotel-filter]").forEach(item => item.classList.toggle("active", item === button)); renderHotels(); });
 document.getElementById("hotelList").addEventListener("click", event => {
   const mapButton = event.target.closest("[data-hotel-map]");
-  if (mapButton) { state.mapQuery = `${mapButton.dataset.hotelMap} in ${currentDestination()}`; showView("exploreView"); return; }
-  const tripButton = event.target.closest("[data-hotel-trip]");
-  if (tripButton) addPlaceToTrip(tripButton.dataset.hotelTrip, "Hotel", tripButton.dataset.hotelRate);
+  if (mapButton) { state.mapQuery = `${mapButton.dataset.hotelMap} in ${selectedOvernightLocation()}`; showView("exploreView"); return; }
+  const selectButton = event.target.closest("[data-hotel-select]");
+  if (selectButton) selectHotelForOvernight(selectButton.dataset.hotelSelect, selectButton.dataset.hotelRate);
   const bookingLink = event.target.closest("[data-booking-provider]");
-  if (bookingLink) trackAppEvent("hotel_booking_link_opened", { provider: bookingLink.dataset.bookingProvider, destination: currentDestination() });
+  if (bookingLink) trackAppEvent("hotel_booking_link_opened", { provider: bookingLink.dataset.bookingProvider, destination: selectedOvernightLocation() });
 });
 document.getElementById("communityMapList").addEventListener("click", event => { const button = event.target.closest("[data-map-community]"); if (button) { state.mapQuery = button.dataset.mapCommunity; updateMap(state.mapQuery); } });
 document.getElementById("locateMeButton").addEventListener("click", () => {
