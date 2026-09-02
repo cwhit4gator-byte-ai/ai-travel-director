@@ -5,6 +5,11 @@ import {
   signOutUser,
   loadCloudState,
   saveCloudState,
+  loadCommunityFeed,
+  publishCommunityExperience,
+  loadCommunityActions,
+  setCommunityHelpful,
+  reportCommunityExperience,
   requestAITrip,
   uploadExperiencePhotos,
   requestPhotoAnalysis
@@ -38,6 +43,15 @@ const state = {
   profile: { ...defaultProfile, ...(saved.profile || {}) },
   trip: saved.trip || null,
   experiences: Array.isArray(saved.experiences) ? saved.experiences : defaultExperiences,
+  communityPosts: [],
+  communityLoaded: false,
+  communityLoading: false,
+  communityCursor: null,
+  communityHasMore: false,
+  communitySearch: "",
+  communityAudience: "All travelers",
+  helpfulIds: new Set(),
+  reportedIds: new Set(),
   user: null,
   cloudConfigured: false,
   syncTimer: null,
@@ -172,11 +186,35 @@ function renderRecommendations() {
   `).join("");
 }
 
+function communityItems() {
+  return state.communityLoaded ? state.communityPosts : state.experiences.slice(-4).reverse();
+}
+
+function filteredCommunityItems() {
+  const search = state.communitySearch.trim().toLocaleLowerCase();
+  return communityItems().filter(item => {
+    const matchesSearch = !search || `${item.place || ""} ${item.text || ""}`.toLocaleLowerCase().includes(search);
+    const matchesAudience = state.communityAudience === "All travelers" || item.audience === state.communityAudience;
+    return matchesSearch && matchesAudience;
+  });
+}
+
 function renderCommunity() {
   const list = document.getElementById("communityList");
-  list.innerHTML = state.experiences.slice(-4).reverse().map(item => {
+  const items = filteredCommunityItems();
+  if (state.communityLoading && !communityItems().length) {
+    list.innerHTML = `<div class="community-state"><span class="ai-pulse" aria-hidden="true">✦</span><strong>Loading traveler insights…</strong></div>`;
+    return;
+  }
+  if (!items.length) {
+    list.innerHTML = `<div class="community-state"><span class="metric-icon" aria-hidden="true">◇</span><strong>No matching insights yet</strong><p>Adjust the filters or share the first experience for this destination.</p></div>`;
+  } else list.innerHTML = items.map(item => {
     const photos = (Array.isArray(item.photoURLs) ? item.photoURLs : []).map(safeImageURL).filter(Boolean);
     const description = String(item.photoAnalysis?.description || item.text || `${item.place || "Travel experience"} photo`);
+    const helpful = state.helpfulIds.has(String(item.id));
+    const reported = state.reportedIds.has(String(item.id));
+    const createdDate = item.createdAt ? new Date(item.createdAt) : null;
+    const dateLabel = createdDate && !Number.isNaN(createdDate.valueOf()) ? createdDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Recent insight";
     const gallery = photos.length ? `
       <div class="community-photo-grid photo-count-${Math.min(photos.length, 3)}" aria-label="${photos.length} traveler photo${photos.length === 1 ? "" : "s"}">
         ${photos.map((photoURL, photoIndex) => `
@@ -191,19 +229,70 @@ function renderCommunity() {
         ${gallery}
         <div class="community-card-copy">
           <h3>${escapeHTML(item.place)} · ${"★".repeat(Math.max(1, Number(item.rating) || 1))}</h3>
+          <div class="community-byline"><span>${escapeHTML(item.authorName || (item.anonymous ? "Anonymous traveler" : "Traveler"))}</span><span aria-hidden="true">·</span><time>${escapeHTML(dateLabel)}</time></div>
           <p>${escapeHTML(item.text)}</p>
           <div class="tag-row"><span class="tag">${escapeHTML(item.audience)}</span><span class="tag">Traveler-reported</span></div>
+          <div class="community-actions">
+            <button class="insight-action${helpful ? " selected" : ""}" type="button" data-community-helpful="${escapeHTML(item.id)}" aria-pressed="${helpful}" ${item.isShared ? "" : "disabled"}>${helpful ? "✓ Helpful" : "♡ Helpful"}</button>
+            <button class="insight-action" type="button" data-community-map="${escapeHTML(item.place)}">⌖ View on map</button>
+            <button class="insight-action report" type="button" data-community-report="${escapeHTML(item.id)}" ${!item.isShared || reported ? "disabled" : ""}>${reported ? "Reported" : "Report"}</button>
+          </div>
         </div>
       </article>
     `;
   }).join("");
+
+  const loadMore = document.getElementById("communityLoadMore");
+  loadMore.hidden = !state.communityLoaded || !state.communityHasMore || Boolean(state.communitySearch) || state.communityAudience !== "All travelers";
+  loadMore.disabled = state.communityLoading;
+  document.getElementById("communityResultSummary").textContent = state.communityLoaded
+    ? `${items.length} shared insight${items.length === 1 ? "" : "s"}${state.communityHasMore ? " loaded" : ""}`
+    : "Showing saved examples until the shared feed connects";
+}
+
+async function hydrateCommunityActions(items = state.communityPosts) {
+  if (!state.user || !items.length) return;
+  try {
+    const actions = await loadCommunityActions(items.map(item => String(item.id)), state.user.uid);
+    actions.helpfulIds.forEach(id => state.helpfulIds.add(String(id)));
+    actions.reportedIds.forEach(id => state.reportedIds.add(String(id)));
+    renderCommunity();
+  } catch (error) {
+    console.warn("Community reactions could not be loaded.", error);
+  }
+}
+
+async function refreshCommunityFeed({ reset = false } = {}) {
+  if (!state.cloudConfigured || state.communityLoading) return;
+  state.communityLoading = true;
+  if (reset) {
+    state.communityCursor = null;
+    state.communityHasMore = false;
+  }
+  renderCommunity();
+  try {
+    const page = await loadCommunityFeed({ cursor: reset ? null : state.communityCursor, pageSize: 8 });
+    const known = new Map((reset ? [] : state.communityPosts).map(item => [String(item.id), item]));
+    page.items.forEach(item => known.set(String(item.id), item));
+    state.communityPosts = [...known.values()];
+    state.communityCursor = page.cursor;
+    state.communityHasMore = page.hasMore;
+    state.communityLoaded = true;
+    await hydrateCommunityActions(page.items);
+  } catch (error) {
+    console.warn("Shared community feed is not available yet.", error);
+  } finally {
+    state.communityLoading = false;
+    renderCommunity();
+    renderCommunityMapPicks(state.mapQuery);
+  }
 }
 
 const communityPhotoDialog = document.getElementById("communityPhotoDialog");
 let activeCommunityPhoto = { experienceId: "", index: 0 };
 
 function openCommunityPhoto(experienceId, photoIndex) {
-  const experience = state.experiences.find(item => String(item.id) === String(experienceId));
+  const experience = communityItems().find(item => String(item.id) === String(experienceId));
   const photos = (Array.isArray(experience?.photoURLs) ? experience.photoURLs : []).map(safeImageURL).filter(Boolean);
   if (!experience || !photos.length) return;
 
@@ -228,7 +317,7 @@ function openCommunityPhoto(experienceId, photoIndex) {
 }
 
 function moveCommunityPhoto(direction) {
-  const experience = state.experiences.find(item => String(item.id) === activeCommunityPhoto.experienceId);
+  const experience = communityItems().find(item => String(item.id) === activeCommunityPhoto.experienceId);
   const photoCount = (Array.isArray(experience?.photoURLs) ? experience.photoURLs : []).map(safeImageURL).filter(Boolean).length;
   if (!photoCount) return;
   openCommunityPhoto(activeCommunityPhoto.experienceId, (activeCommunityPhoto.index + direction + photoCount) % photoCount);
@@ -308,7 +397,7 @@ function normalizeAITrip(result, sourceRequest) {
 
 async function createTripFromRequest(text) {
   if (state.user && state.cloudConfigured && navigator.onLine) {
-    const result = await requestAITrip({ request: text, profile: state.profile, communityInsights: state.experiences.slice(-8) });
+    const result = await requestAITrip({ request: text, profile: state.profile, communityInsights: communityItems().slice(0, 8) });
     return { trip: normalizeAITrip(result, text), message: result.message || "I created a personalized draft itinerary. No bookings were made." };
   }
   const trip = buildLocalTrip(text);
@@ -397,6 +486,30 @@ function renderPlaces(query) {
     const directions = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destinationQuery)}`;
     return `<article class="place-card"><span class="place-pin">${place.icon}</span><div><strong>${escapeHTML(place.name)}</strong><p>${escapeHTML(place.category)} · ${place.cost ? `$${place.cost} estimate` : "Free"}</p></div><div class="place-actions"><button class="icon-action" data-add-place="${escapeHTML(place.name)}" data-place-category="${escapeHTML(place.category)}" data-place-cost="${place.cost}" title="Add to trip">＋</button><a class="icon-action" href="${directions}" target="_blank" rel="noopener" title="Directions">↗</a></div></article>`;
   }).join("");
+  renderCommunityMapPicks(query);
+}
+
+function renderCommunityMapPicks(query) {
+  const list = document.getElementById("communityMapList");
+  if (!list) return;
+  const queryText = String(query || "").toLocaleLowerCase();
+  const items = communityItems()
+    .map(item => ({ item, matches: `${item.place || ""} ${item.text || ""}`.toLocaleLowerCase().includes(queryText) }))
+    .sort((a, b) => Number(b.matches) - Number(a.matches))
+    .slice(0, 3)
+    .map(entry => entry.item);
+  if (!items.length) {
+    list.innerHTML = `<div class="map-community-empty">Community locations will appear here as travelers publish insights.</div>`;
+    return;
+  }
+  list.innerHTML = items.map(item => {
+    const photo = (Array.isArray(item.photoURLs) ? item.photoURLs : []).map(safeImageURL).find(Boolean);
+    return `<article class="place-card community-map-card">
+      ${photo ? `<img src="${escapeHTML(photo)}" alt="" loading="lazy" />` : `<span class="place-pin">◇</span>`}
+      <div><strong>${escapeHTML(item.place)}</strong><p>${"★".repeat(Math.max(1, Number(item.rating) || 1))} · ${escapeHTML(item.audience || "Everyone")}</p></div>
+      <div class="place-actions"><button class="icon-action" type="button" data-map-community="${escapeHTML(item.place)}" title="Show on map">⌖</button></div>
+    </article>`;
+  }).join("");
 }
 
 function addPlaceToTrip(name, category, cost) {
@@ -431,6 +544,11 @@ function updateAccountUI() {
 
 async function handleAuthenticatedUser(user) {
   state.user = user;
+  if (!user) {
+    state.helpfulIds.clear();
+    state.reportedIds.clear();
+    renderCommunity();
+  }
   updateAccountUI();
   if (!user) {
     setCloudBanner(state.cloudConfigured ? "Cloud ready · Connect your account to synchronize data and use secure AI." : "Local travel mode · Cloud connection is ready to configure.");
@@ -448,6 +566,7 @@ async function handleAuthenticatedUser(user) {
       renderAll();
     }
     await syncToCloud({ silent: true });
+    await hydrateCommunityActions();
   } catch (error) {
     console.error(error);
     setCloudBanner("Signed in, but cloud data could not be loaded. Local mode remains available.", "error");
@@ -474,6 +593,9 @@ document.getElementById("startPlanningButton").addEventListener("click", () => s
 document.getElementById("profileButton").addEventListener("click", () => showView("profileView"));
 document.getElementById("shareExperienceButton").addEventListener("click", () => showView("communityView"));
 document.getElementById("refreshRecommendations").addEventListener("click", () => { renderRecommendations(); toast("Recommendations refreshed"); });
+document.getElementById("communitySearch").addEventListener("input", event => { state.communitySearch = event.target.value; renderCommunity(); });
+document.getElementById("communityAudienceFilter").addEventListener("change", event => { state.communityAudience = event.target.value; renderCommunity(); });
+document.getElementById("communityLoadMore").addEventListener("click", () => refreshCommunityFeed({ reset: false }));
 
 document.querySelectorAll(".prompt-chip").forEach(button => button.addEventListener("click", () => { document.getElementById("chatInput").value = button.textContent; document.getElementById("chatInput").focus(); }));
 
@@ -505,6 +627,7 @@ document.getElementById("chatForm").addEventListener("submit", async event => {
 document.getElementById("mapSearchForm").addEventListener("submit", event => { event.preventDefault(); const query = document.getElementById("mapSearchInput").value.trim(); if (query) updateMap(query); });
 document.querySelectorAll(".filter-chip").forEach(button => button.addEventListener("click", () => { document.querySelectorAll(".filter-chip").forEach(item => item.classList.remove("active")); button.classList.add("active"); updateMap(button.dataset.mapFilter); }));
 document.getElementById("placeList").addEventListener("click", event => { const button = event.target.closest("[data-add-place]"); if (button) addPlaceToTrip(button.dataset.addPlace, button.dataset.placeCategory, button.dataset.placeCost); });
+document.getElementById("communityMapList").addEventListener("click", event => { const button = event.target.closest("[data-map-community]"); if (button) { state.mapQuery = button.dataset.mapCommunity; updateMap(state.mapQuery); } });
 document.getElementById("locateMeButton").addEventListener("click", () => {
   if (!navigator.geolocation) return toast("Location is unavailable in this browser");
   navigator.geolocation.getCurrentPosition(position => updateMap(`${position.coords.latitude.toFixed(5)},${position.coords.longitude.toFixed(5)}`), () => toast("Location permission was not granted"), { enableHighAccuracy: true, timeout: 10000 });
@@ -566,9 +689,47 @@ document.getElementById("experiencePhotos").addEventListener("change", event => 
   document.getElementById("photoStatus").textContent = files.length ? `${files.length} photo${files.length === 1 ? "" : "s"} ready to upload.` : "Up to 3 photos. AI can help describe the experience when cloud mode is connected.";
 });
 
-document.getElementById("communityList").addEventListener("click", event => {
+document.getElementById("communityList").addEventListener("click", async event => {
   const button = event.target.closest(".community-photo-button");
-  if (button) openCommunityPhoto(button.dataset.experienceId, button.dataset.photoIndex);
+  if (button) {
+    openCommunityPhoto(button.dataset.experienceId, button.dataset.photoIndex);
+    return;
+  }
+  const mapButton = event.target.closest("[data-community-map]");
+  if (mapButton) {
+    state.mapQuery = mapButton.dataset.communityMap;
+    showView("exploreView");
+    return;
+  }
+  const helpfulButton = event.target.closest("[data-community-helpful]");
+  const reportButton = event.target.closest("[data-community-report]");
+  if (!helpfulButton && !reportButton) return;
+  if (!state.user) {
+    toast("Connect your account to interact with community posts");
+    showView("profileView");
+    return;
+  }
+  const actionButton = helpfulButton || reportButton;
+  actionButton.disabled = true;
+  try {
+    if (helpfulButton) {
+      const postId = String(helpfulButton.dataset.communityHelpful);
+      const helpful = !state.helpfulIds.has(postId);
+      await setCommunityHelpful(postId, state.user.uid, helpful);
+      if (helpful) state.helpfulIds.add(postId); else state.helpfulIds.delete(postId);
+      toast(helpful ? "Marked as helpful" : "Helpful reaction removed");
+    } else {
+      const postId = String(reportButton.dataset.communityReport);
+      await reportCommunityExperience(postId, state.user.uid);
+      state.reportedIds.add(postId);
+      toast("Report received for moderation review");
+    }
+    renderCommunity();
+  } catch (error) {
+    console.error(error);
+    toast(error.message || "Community action could not be saved");
+    actionButton.disabled = false;
+  }
 });
 document.getElementById("closeCommunityPhoto").addEventListener("click", () => communityPhotoDialog.close());
 document.getElementById("previousCommunityPhoto").addEventListener("click", () => moveCommunityPhoto(-1));
@@ -579,6 +740,11 @@ communityPhotoDialog.addEventListener("click", event => {
 
 document.getElementById("experienceForm").addEventListener("submit", async event => {
   event.preventDefault();
+  if (!state.user || !state.cloudConfigured) {
+    toast("Connect your account before publishing a community insight");
+    showView("profileView");
+    return;
+  }
   const submit = event.submitter;
   submit.disabled = true;
   const files = [...document.getElementById("experiencePhotos").files].slice(0, 3);
@@ -590,8 +756,9 @@ document.getElementById("experienceForm").addEventListener("submit", async event
       photoURLs = await uploadExperiencePhotos(state.user.uid, files);
       if (photoURLs[0]) photoAnalysis = await requestPhotoAnalysis(photoURLs[0]);
     }
-    state.experiences.push({
+    const experience = {
       id: crypto.randomUUID(),
+      authorName: state.user.displayName || state.profile.name || "Traveler",
       place: document.getElementById("experiencePlace").value.trim(),
       rating: Number(document.getElementById("experienceRating").value),
       text: document.getElementById("experienceText").value.trim(),
@@ -600,13 +767,16 @@ document.getElementById("experienceForm").addEventListener("submit", async event
       photoURLs,
       photoAnalysis,
       createdAt: new Date().toISOString()
-    });
-    scheduleSave();
+    };
+    const sharedExperience = await publishCommunityExperience(state.user.uid, experience);
+    state.communityPosts = [sharedExperience, ...state.communityPosts.filter(item => String(item.id) !== String(sharedExperience.id))];
+    state.communityLoaded = true;
     event.target.reset();
     document.getElementById("experienceAnonymous").checked = true;
     document.getElementById("photoStatus").textContent = "Up to 3 photos. AI can help describe the experience when cloud mode is connected.";
     renderCommunity();
-    toast(files.length && !state.user ? "Experience saved; connect cloud to upload photos" : "Experience saved");
+    renderCommunityMapPicks(state.mapQuery);
+    toast("Community insight published");
     showView("homeView");
   } catch (error) { console.error(error); toast(error.message || "The experience could not be saved"); }
   finally { submit.disabled = false; }
@@ -643,7 +813,10 @@ async function initializeApp() {
   try {
     const cloud = await initializeCloud();
     state.cloudConfigured = cloud.configured;
-    if (cloud.configured) observeAuth(handleAuthenticatedUser);
+    if (cloud.configured) {
+      observeAuth(handleAuthenticatedUser);
+      await refreshCommunityFeed({ reset: true });
+    }
     else handleAuthenticatedUser(null);
   } catch (error) {
     console.error(error);

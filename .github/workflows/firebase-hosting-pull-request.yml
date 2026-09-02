@@ -13,6 +13,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  validate_firebase_rules:
+    name: Validate Firebase rules
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Compile Firestore and Storage rules
+        run: npx --yes firebase-tools@15.28.2 emulators:exec --only firestore,storage --project demo-ai-travel-director 'node -e "console.log(\"Firebase rules compiled\")"'
+
   deploy_preview:
     name: Deploy preview site
     if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}

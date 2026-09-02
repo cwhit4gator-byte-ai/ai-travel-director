@@ -66,7 +66,16 @@
             <div><p class="eyebrow">FROM TRAVELERS</p><h2>Community insights</h2></div>
             <button id="shareExperienceButton" class="text-button">Share yours</button>
           </div>
+          <div class="community-toolbar">
+            <label class="community-search"><span aria-hidden="true">⌕</span><input id="communitySearch" type="search" placeholder="Filter by destination or tip" aria-label="Filter community insights" /></label>
+            <label class="sr-only" for="communityAudienceFilter">Filter by traveler type</label>
+            <select id="communityAudienceFilter">
+              <option>All travelers</option><option>Everyone</option><option>Solo travelers</option><option>Families</option><option>Budget travelers</option><option>Travelers with mobility needs</option><option>History lovers</option>
+            </select>
+          </div>
+          <p id="communityResultSummary" class="result-summary" aria-live="polite"></p>
           <div id="communityList" class="card-list"></div>
+          <button id="communityLoadMore" class="secondary-button load-more-button" type="button" hidden>Load more insights</button>
         </section>
       </section>
 
@@ -119,6 +128,10 @@
           <div class="section-heading compact"><h2>Places to consider</h2><span id="mapResultCount" class="result-count"></span></div>
           <div id="placeList" class="place-list"></div>
         </section>
+        <section class="map-results community-map-results">
+          <div class="section-heading compact"><div><p class="eyebrow">FROM TRAVELERS</p><h2>Community map picks</h2></div></div>
+          <div id="communityMapList" class="place-list"></div>
+        </section>
       </section>
 
       <section id="itineraryView" class="view" aria-labelledby="tripHeading">
@@ -159,7 +172,8 @@
           <label>What should future travelers know?<textarea id="experienceText" required rows="5" placeholder="Share timing, cost, crowds, accessibility, or transportation tips."></textarea></label>
           <label class="upload-field">Add photos<input id="experiencePhotos" type="file" accept="image/*" multiple /><small id="photoStatus">Up to 3 photos. AI can help describe the experience when cloud mode is connected.</small></label>
           <label class="check-row"><input id="experienceAnonymous" type="checkbox" checked /> Post anonymously</label>
-          <button class="primary-button" type="submit">Save experience</button>
+          <p class="public-post-notice"><strong>This is a public community post.</strong> Your place, notes, rating, and uploaded photos will be visible to other travelers. Older private experiences will remain private.</p>
+          <button class="primary-button" type="submit">Publish community insight</button>
         </form>
       </section>
 
