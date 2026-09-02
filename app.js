@@ -68,6 +68,15 @@ function escapeHTML(value) {
   return String(value ?? "").replace(/[&<>'"]/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[character]));
 }
 
+function safeImageURL(value) {
+  try {
+    const url = new URL(String(value || ""), window.location.href);
+    return url.protocol === "https:" ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
 function saveLocalState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({ profile: state.profile, trip: state.trip, experiences: state.experiences, mapQuery: state.mapQuery }));
 }
@@ -165,9 +174,64 @@ function renderRecommendations() {
 
 function renderCommunity() {
   const list = document.getElementById("communityList");
-  list.innerHTML = state.experiences.slice(-4).reverse().map(item => `
-    <article class="info-card"><h3>${escapeHTML(item.place)} · ${"★".repeat(Math.max(1, Number(item.rating) || 1))}</h3><p>${escapeHTML(item.text)}</p><div class="tag-row"><span class="tag">${escapeHTML(item.audience)}</span><span class="tag">Traveler-reported</span></div></article>
-  `).join("");
+  list.innerHTML = state.experiences.slice(-4).reverse().map(item => {
+    const photos = (Array.isArray(item.photoURLs) ? item.photoURLs : []).map(safeImageURL).filter(Boolean);
+    const description = String(item.photoAnalysis?.description || item.text || `${item.place || "Travel experience"} photo`);
+    const gallery = photos.length ? `
+      <div class="community-photo-grid photo-count-${Math.min(photos.length, 3)}" aria-label="${photos.length} traveler photo${photos.length === 1 ? "" : "s"}">
+        ${photos.map((photoURL, photoIndex) => `
+          <button class="community-photo-button" type="button" data-experience-id="${escapeHTML(item.id)}" data-photo-index="${photoIndex}" aria-label="Open photo ${photoIndex + 1} of ${photos.length} from ${escapeHTML(item.place)}">
+            <img src="${escapeHTML(photoURL)}" alt="${escapeHTML(description)}" loading="lazy" />
+          </button>
+        `).join("")}
+      </div>
+    ` : "";
+    return `
+      <article class="info-card community-card">
+        ${gallery}
+        <div class="community-card-copy">
+          <h3>${escapeHTML(item.place)} · ${"★".repeat(Math.max(1, Number(item.rating) || 1))}</h3>
+          <p>${escapeHTML(item.text)}</p>
+          <div class="tag-row"><span class="tag">${escapeHTML(item.audience)}</span><span class="tag">Traveler-reported</span></div>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+const communityPhotoDialog = document.getElementById("communityPhotoDialog");
+let activeCommunityPhoto = { experienceId: "", index: 0 };
+
+function openCommunityPhoto(experienceId, photoIndex) {
+  const experience = state.experiences.find(item => String(item.id) === String(experienceId));
+  const photos = (Array.isArray(experience?.photoURLs) ? experience.photoURLs : []).map(safeImageURL).filter(Boolean);
+  if (!experience || !photos.length) return;
+
+  const index = Math.max(0, Math.min(Number(photoIndex) || 0, photos.length - 1));
+  const description = String(experience.photoAnalysis?.description || experience.text || `${experience.place || "Travel experience"} photo`);
+  activeCommunityPhoto = { experienceId: String(experience.id), index };
+
+  const fullPhoto = document.getElementById("communityPhotoFull");
+  fullPhoto.src = photos[index];
+  fullPhoto.alt = description;
+  document.getElementById("communityPhotoTitle").textContent = experience.place || "Traveler photo";
+  document.getElementById("communityPhotoDescription").textContent = description;
+  const travelerNote = document.getElementById("communityPhotoTravelerNote");
+  travelerNote.textContent = description === experience.text ? "" : experience.text || "";
+  travelerNote.hidden = !travelerNote.textContent;
+  document.getElementById("communityPhotoTags").innerHTML = `<span class="tag">${escapeHTML(experience.audience || "Everyone")}</span><span class="tag">${"★".repeat(Math.max(1, Number(experience.rating) || 1))}</span>`;
+  document.getElementById("communityPhotoPosition").textContent = photos.length > 1 ? `Photo ${index + 1} of ${photos.length}` : "Traveler-uploaded photo";
+  document.getElementById("previousCommunityPhoto").hidden = photos.length < 2;
+  document.getElementById("nextCommunityPhoto").hidden = photos.length < 2;
+
+  if (!communityPhotoDialog.open) communityPhotoDialog.showModal();
+}
+
+function moveCommunityPhoto(direction) {
+  const experience = state.experiences.find(item => String(item.id) === activeCommunityPhoto.experienceId);
+  const photoCount = (Array.isArray(experience?.photoURLs) ? experience.photoURLs : []).map(safeImageURL).filter(Boolean).length;
+  if (!photoCount) return;
+  openCommunityPhoto(activeCommunityPhoto.experienceId, (activeCommunityPhoto.index + direction + photoCount) % photoCount);
 }
 
 function addMessage(text, type = "ai", pending = false) {
@@ -500,6 +564,17 @@ document.getElementById("authButton").addEventListener("click", async () => {
 document.getElementById("experiencePhotos").addEventListener("change", event => {
   const files = [...event.target.files].slice(0, 3);
   document.getElementById("photoStatus").textContent = files.length ? `${files.length} photo${files.length === 1 ? "" : "s"} ready to upload.` : "Up to 3 photos. AI can help describe the experience when cloud mode is connected.";
+});
+
+document.getElementById("communityList").addEventListener("click", event => {
+  const button = event.target.closest(".community-photo-button");
+  if (button) openCommunityPhoto(button.dataset.experienceId, button.dataset.photoIndex);
+});
+document.getElementById("closeCommunityPhoto").addEventListener("click", () => communityPhotoDialog.close());
+document.getElementById("previousCommunityPhoto").addEventListener("click", () => moveCommunityPhoto(-1));
+document.getElementById("nextCommunityPhoto").addEventListener("click", () => moveCommunityPhoto(1));
+communityPhotoDialog.addEventListener("click", event => {
+  if (event.target === communityPhotoDialog) communityPhotoDialog.close();
 });
 
 document.getElementById("experienceForm").addEventListener("submit", async event => {
