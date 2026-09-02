@@ -25,6 +25,12 @@ jobs:
         with:
           node-version: 24
 
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
       - name: Compile Firestore and Storage rules
         run: npx --yes firebase-tools@15.28.2 emulators:exec --only firestore,storage --project demo-ai-travel-director 'node -e "console.log(\"Firebase rules compiled\")"'
 
