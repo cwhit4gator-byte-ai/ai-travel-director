@@ -15,8 +15,8 @@ import {
   requestAITrip,
   uploadExperiencePhotos,
   requestPhotoAnalysis
-} from "./firebase-client.js?v=8";
-import { renderGoogleMap } from "./maps.js?v=8";
+} from "./firebase-client.js?v=9";
+import { renderGoogleMap } from "./maps.js?v=9";
 
 const STORAGE_KEY = "aitd_v3_state";
 const defaultProfile = {
@@ -642,9 +642,10 @@ async function updateMap(query) {
     if (requestId !== mapRequestId) return;
     console.warn("Interactive Maps view unavailable; using embedded fallback.", error);
     canvas.hidden = true;
+    canvas.replaceChildren();
     fallback.hidden = false;
     fallback.src = `https://www.google.com/maps?q=${encodeURIComponent(fullQuery)}&output=embed`;
-    document.getElementById("mapLabelText").textContent = fullQuery;
+    document.getElementById("mapLabelText").textContent = `Showing map results for ${fullQuery}`;
   }
 }
 
@@ -1051,7 +1052,7 @@ window.addEventListener("online", updateConnectionState);
 window.addEventListener("offline", updateConnectionState);
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; installButton.hidden = false; });
 installButton.addEventListener("click", async () => { if (!deferredInstallPrompt) return toast("Use your browser menu to add this app to your home screen"); deferredInstallPrompt.prompt(); await deferredInstallPrompt.userChoice; deferredInstallPrompt = null; installButton.hidden = true; });
-const APP_VERSION = "8";
+const APP_VERSION = "9";
 async function registerServiceWorker() {
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
