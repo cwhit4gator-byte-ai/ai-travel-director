@@ -1,5 +1,5 @@
-const CACHE_NAME = "ai-travel-director-v3";
-const APP_FILES = ["./", "./index.html", "./styles.css", "./app.js", "./firebase-client.js", "./firebase-config.js", "./manifest.json", "./icons/icon-192.png", "./icons/icon-512.png"];
+const CACHE_NAME = "ai-travel-director-v4";
+const APP_FILES = ["./", "./index.html", "./styles.css", "./app.js", "./firebase-client.js", "./firebase-config.js", "./maps.js", "./manifest.json", "./icon.svg"];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_FILES)));

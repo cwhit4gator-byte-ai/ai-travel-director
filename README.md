@@ -5,14 +5,14 @@ A mobile-first personal travel app with AI trip planning, Google Maps exploratio
 ## Included in this version
 
 - Human-friendly Home, Plan, Explore, Trip, Safety, Experience, and Profile views
-- Google Maps search, category filters, directions, and “add to trip” actions without requiring a Maps API key
+- Interactive Google Maps search with category filters, directions, location lookup, and “add to trip” actions
 - Secure Firebase Authentication, Firestore sync, Storage uploads, and callable Functions adapters
 - OpenAI-powered `planTrip` and `analyzeExperiencePhoto` Functions with local trip-planning fallback
 - Installable PWA and offline app shell
 
 ## Firebase setup
 
-1. Copy the Firebase Web App values into `firebase-config.js`.
+1. Serve the app with Firebase Hosting so `/__/firebase/init.json` can provide the Web App configuration.
 2. Keep `OPENAI_API_KEY` only in Firebase Functions secret storage.
 3. Install the Functions dependencies from `functions/`.
 4. Deploy Hosting, Functions, Firestore rules, and Storage rules with the Firebase CLI.
