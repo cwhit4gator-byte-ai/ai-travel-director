@@ -15,8 +15,8 @@ import {
   requestAITrip,
   uploadExperiencePhotos,
   requestPhotoAnalysis
-} from "./firebase-client.js";
-import { renderGoogleMap } from "./maps.js";
+} from "./firebase-client.js?v=8";
+import { renderGoogleMap } from "./maps.js?v=8";
 
 const STORAGE_KEY = "aitd_v3_state";
 const defaultProfile = {
@@ -1051,7 +1051,25 @@ window.addEventListener("online", updateConnectionState);
 window.addEventListener("offline", updateConnectionState);
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; installButton.hidden = false; });
 installButton.addEventListener("click", async () => { if (!deferredInstallPrompt) return toast("Use your browser menu to add this app to your home screen"); deferredInstallPrompt.prompt(); await deferredInstallPrompt.userChoice; deferredInstallPrompt = null; installButton.hidden = true; });
-if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("./service-worker.js").catch(error => console.warn("Service worker unavailable", error)));
+const APP_VERSION = "8";
+async function registerServiceWorker() {
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshing) return;
+    refreshing = true;
+    const reloadKey = `aitd_app_reloaded_${APP_VERSION}`;
+    if (sessionStorage.getItem(reloadKey)) return;
+    sessionStorage.setItem(reloadKey, "true");
+    window.location.reload();
+  });
+  try {
+    const registration = await navigator.serviceWorker.register(`./service-worker.js?v=${APP_VERSION}`, { updateViaCache: "none" });
+    await registration.update();
+  } catch (error) {
+    console.warn("Service worker unavailable", error);
+  }
+}
+if ("serviceWorker" in navigator) window.addEventListener("load", registerServiceWorker);
 
 async function initializeApp() {
   hydrateProfileForm();
