@@ -7,7 +7,7 @@
   <meta name="description" content="AI-first travel planning, live itineraries, maps, traveler insights, and safety tools." />
   <title>AI Travel Director</title>
   <link rel="manifest" href="manifest.json" />
-  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -111,7 +111,8 @@
           <button class="filter-chip" data-map-filter="quiet parks">Quiet</button>
         </div>
         <div class="map-frame-wrap">
-          <iframe id="mapFrame" title="Interactive Google Map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+          <div id="mapCanvas" class="map-canvas" role="region" aria-label="Interactive Google map"></div>
+          <iframe id="mapFallback" title="Google Map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen hidden></iframe>
           <div class="map-label"><span class="live-dot"></span><span id="mapLabelText">Exploring your next destination</span></div>
         </div>
         <section class="map-results">
