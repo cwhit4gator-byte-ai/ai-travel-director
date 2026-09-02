@@ -10,6 +10,7 @@ A mobile-first personal travel app with AI trip planning, Google Maps exploratio
 - Shared Community Insights feed with public posts, destination filters, pagination, helpful reactions, private reports, photo galleries, and Explore-map links
 - OpenAI-powered `planTrip` and `analyzeExperiencePhoto` Functions with local trip-planning fallback
 - Installable PWA and offline app shell
+- Provider-neutral hotel affiliate links for qualified-click and completed-booking programs, with privacy-safe attribution and traveler-facing disclosure
 
 ## Firebase setup
 
@@ -23,5 +24,7 @@ A mobile-first personal travel app with AI trip planning, Google Maps exploratio
 The GitHub Actions workflows deploy pull-request Hosting previews. Merges to `main` publish Firestore rules, indexes, Storage rules, and the live Firebase Hosting channel. Add the Firebase service-account JSON as the encrypted repository secret `FIREBASE_SERVICE_ACCOUNT_AI_TRAVEL_DIRECTOR`. Never commit that credential to the repository.
 
 The deployment service account needs Firebase Hosting Admin, Firebase Rules Admin, and Cloud Datastore Index Admin permissions.
+
+Affiliate provider IDs and approved deep-link templates belong in `affiliate-config.js`; API secrets must stay in Firebase Functions secret storage. Blank templates keep providers disabled.
 
 The app never makes purchases. Live prices, availability, opening hours, accessibility, weather, and safety conditions must be verified before travel.

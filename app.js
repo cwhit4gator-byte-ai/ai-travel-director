@@ -16,8 +16,8 @@ import {
   uploadExperiencePhotos,
   requestPhotoAnalysis,
   trackAppEvent
-} from "./firebase-client.js?v=15";
-import { renderGoogleMap, resolvePlaceCity } from "./maps.js?v=15";
+} from "./firebase-client.js?v=16";
+import { renderGoogleMap, resolvePlaceCity } from "./maps.js?v=16";
 
 const STORAGE_KEY = "aitd_v3_state";
 const ONBOARDING_KEY = "aitd_onboarding_v1";
@@ -286,13 +286,48 @@ function hotelRecommendations() {
   const ordered = state.hotelFilter === "best" ? styles : [...styles].sort((a,b) => Number(b.id === state.hotelFilter) - Number(a.id === state.hotelFilter));
   return ordered.map(hotel => ({ ...hotel, nightly: Math.round(nightlyBase * hotel.multiplier), location, stopId: stop.id, nights: stop.days.length }));
 }
+function affiliateSubId(hotel) {
+  const raw = `aitd_${hotel.stopId || "stop"}_${hotel.id || "hotel"}`;
+  return raw.toLowerCase().replace(/[^a-z0-9_-]+/g, "_").slice(0, 80);
+}
+function fillAffiliateTemplate(template, hotel) {
+  const query = `${hotel.name} in ${hotel.location}`;
+  const values = {
+    destination: encodeURIComponent(hotel.location),
+    query: encodeURIComponent(query),
+    subId: encodeURIComponent(affiliateSubId(hotel))
+  };
+  return String(template || "").replace(/\{(destination|query|subId)\}/g, (_, key) => values[key]);
+}
+function configuredAffiliateLinks(hotel) {
+  const providers = Array.isArray(window.TRAVEL_AFFILIATE_CONFIG?.providers)
+    ? window.TRAVEL_AFFILIATE_CONFIG.providers
+    : [];
+  return providers
+    .filter(provider => provider && provider.id && provider.label && provider.urlTemplate)
+    .map(provider => ({
+      id: String(provider.id),
+      label: String(provider.label),
+      revenueModel: String(provider.revenueModel || "completed_booking"),
+      url: fillAffiliateTemplate(provider.urlTemplate, hotel)
+    }))
+    .filter(provider => /^https:\/\//i.test(provider.url));
+}
 function hotelSearchLinks(hotel) {
   const query = `${hotel.name} in ${hotel.location}`;
   return {
     google: `https://www.google.com/travel/search?q=${encodeURIComponent(query)}`,
     booking: `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(hotel.location)}`,
-    expedia: `https://www.expedia.com/Hotel-Search?destination=${encodeURIComponent(hotel.location)}`
+    expedia: `https://www.expedia.com/Hotel-Search?destination=${encodeURIComponent(hotel.location)}`,
+    affiliates: configuredAffiliateLinks(hotel)
   };
+}
+function bookingLinksMarkup(hotel, links) {
+  const affiliateLinks = links.affiliates.map((provider, index) =>
+    `<a class="${index === 0 ? "primary-button" : ""}" href="${escapeHTML(provider.url)}" target="_blank" rel="sponsored noopener noreferrer" data-booking-provider="${escapeHTML(provider.label)}" data-revenue-model="${escapeHTML(provider.revenueModel)}" data-affiliate-link="true">${index === 0 ? "Compare & book with " : ""}${escapeHTML(provider.label)}</a>`
+  ).join("");
+  const directLinks = `<a class="${affiliateLinks ? "" : "primary-button"}" href="${links.google}" target="_blank" rel="noopener noreferrer" data-booking-provider="Google Hotels" data-revenue-model="none">Compare on Google Hotels</a><a href="${links.booking}" target="_blank" rel="noopener noreferrer" data-booking-provider="Booking.com" data-revenue-model="none">Booking.com</a><a href="${links.expedia}" target="_blank" rel="noopener noreferrer" data-booking-provider="Expedia" data-revenue-model="none">Expedia</a>`;
+  return affiliateLinks + directLinks;
 }
 function selectHotelForOvernight(hotelName, nightly) {
   if (!state.trip) return showView("plannerView");
@@ -401,7 +436,7 @@ function renderHotels() {
   list.innerHTML = hotels.map(hotel => {
     const links = hotelSearchLinks(hotel);
     const selected = state.trip?.hotelSelections?.[hotel.stopId]?.name === hotel.name;
-    return `<article class="hotel-card${selected ? " selected-hotel" : ""}"><div class="hotel-card-top"><span class="hotel-icon" aria-hidden="true">${hotel.icon}</span><div><p class="eyebrow">${escapeHTML(hotel.area)} · ${escapeHTML(hotel.location)}</p><h2>${escapeHTML(hotel.name)}</h2></div></div><p class="hotel-reason">${escapeHTML(hotel.reason)}</p><div class="hotel-facts"><span>About <strong>$${hotel.nightly.toLocaleString("en-US")}/night</strong></span><span>${escapeHTML(hotel.amenity)}</span></div><div class="hotel-actions"><button class="secondary-button" type="button" data-hotel-map="${escapeHTML(hotel.name)}">View on map</button><button class="secondary-button" type="button" data-hotel-select="${escapeHTML(hotel.name)}" data-hotel-rate="${hotel.nightly}" ${selected ? "disabled" : ""}>${selected ? "✓ Selected" : "Select for this stop"}</button></div><div class="booking-links" aria-label="Search booking providers"><a class="primary-button" href="${links.google}" target="_blank" rel="noopener noreferrer" data-booking-provider="Google Hotels">Search Google Hotels</a><a href="${links.booking}" target="_blank" rel="noopener noreferrer" data-booking-provider="Booking.com">Booking.com</a><a href="${links.expedia}" target="_blank" rel="noopener noreferrer" data-booking-provider="Expedia">Expedia</a></div></article>`;
+    return `<article class="hotel-card${selected ? " selected-hotel" : ""}"><div class="hotel-card-top"><span class="hotel-icon" aria-hidden="true">${hotel.icon}</span><div><p class="eyebrow">${escapeHTML(hotel.area)} · ${escapeHTML(hotel.location)}</p><h2>${escapeHTML(hotel.name)}</h2></div></div><p class="hotel-reason">${escapeHTML(hotel.reason)}</p><div class="hotel-facts"><span>About <strong>$${hotel.nightly.toLocaleString("en-US")}/night</strong></span><span>${escapeHTML(hotel.amenity)}</span></div><div class="hotel-actions"><button class="secondary-button" type="button" data-hotel-map="${escapeHTML(hotel.name)}">View on map</button><button class="secondary-button" type="button" data-hotel-select="${escapeHTML(hotel.name)}" data-hotel-rate="${hotel.nightly}" ${selected ? "disabled" : ""}>${selected ? "✓ Selected" : "Select for this stop"}</button></div><div class="booking-links" aria-label="Compare hotel prices and booking providers">${bookingLinksMarkup(hotel, links)}</div></article>`;
   }).join("");
 }
 
@@ -1031,7 +1066,7 @@ document.getElementById("hotelList").addEventListener("click", event => {
   const selectButton = event.target.closest("[data-hotel-select]");
   if (selectButton) selectHotelForOvernight(selectButton.dataset.hotelSelect, selectButton.dataset.hotelRate);
   const bookingLink = event.target.closest("[data-booking-provider]");
-  if (bookingLink) trackAppEvent("hotel_booking_link_opened", { provider: bookingLink.dataset.bookingProvider, destination: selectedOvernightLocation() });
+  if (bookingLink) trackAppEvent("hotel_booking_link_opened", { provider: bookingLink.dataset.bookingProvider, revenue_model: bookingLink.dataset.revenueModel || "none", affiliate: bookingLink.dataset.affiliateLink === "true", nights: selectedOvernightStop()?.days?.length || 1 });
 });
 document.getElementById("communityMapList").addEventListener("click", event => { const button = event.target.closest("[data-map-community]"); if (button) { state.mapQuery = button.dataset.mapCommunity; updateMap(state.mapQuery); } });
 document.getElementById("locateMeButton").addEventListener("click", () => {

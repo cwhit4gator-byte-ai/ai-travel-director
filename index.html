@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b1830" />
   <meta name="description" content="AI-first travel planning, live itineraries, maps, traveler insights, and safety tools." />
   <title>AI Travel Director</title>
-  <link rel="manifest" href="manifest.json?v=15" />
+  <link rel="manifest" href="manifest.json?v=16" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=15" />
+  <link rel="stylesheet" href="styles.css?v=16" />
 </head>
 <body>
   <div class="app-shell">
@@ -164,7 +164,7 @@
         <p class="hotel-step-label">Then choose the kind of stay</p>
         <div class="hotel-toolbar" aria-label="Hotel preference"><button class="filter-chip active" type="button" data-hotel-filter="best">Best match</button><button class="filter-chip" type="button" data-hotel-filter="value">Best value</button><button class="filter-chip" type="button" data-hotel-filter="central">Central</button><button class="filter-chip" type="button" data-hotel-filter="quiet">Quiet</button></div>
         <div id="hotelList" class="hotel-grid"></div>
-        <p class="booking-disclaimer">Prices are planning estimates, not live quotes. Availability, total price, taxes, fees, cancellation terms, and accessibility must be confirmed with the booking provider. Travel AI does not complete reservations.</p>
+        <aside class="affiliate-disclosure" aria-label="Affiliate disclosure"><strong>How booking links work</strong><p>Some hotel links are affiliate links. Travel AI may earn money from a qualified click or completed booking at no additional cost to you. Recommendations stay based on traveler fit, location, and budget—not commission. Prices are planning estimates; confirm availability, total price, taxes, fees, cancellation terms, and accessibility with the provider.</p></aside>
       </section>
 
       <section id="safetyView" class="view" aria-labelledby="safetyHeading">
@@ -323,6 +323,7 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="app.js?v=15"></script>
+  <script src="affiliate-config.js?v=16"></script>
+  <script type="module" src="app.js?v=16"></script>
 </body>
 </html>
