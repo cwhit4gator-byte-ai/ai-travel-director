@@ -1,0 +1,16 @@
+{
+  "name": "ai-travel-director-functions",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "20" },
+  "main": "index.js",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions",
+    "deploy": "firebase deploy --only functions"
+  },
+  "dependencies": {
+    "firebase-admin": "latest",
+    "firebase-functions": "latest",
+    "openai": "latest"
+  }
+}
