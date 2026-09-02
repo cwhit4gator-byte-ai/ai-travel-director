@@ -2,6 +2,28 @@ import { loadFirebaseConfig, functionsRegion } from "./firebase-config.js";
 
 let services = null;
 let initializationPromise = null;
+let analyticsService = null;
+let analyticsLogEvent = null;
+
+const ANALYTICS_EVENTS = new Set([
+  "app_open", "view_opened", "onboarding_started", "onboarding_completed", "onboarding_skipped",
+  "trip_plan_requested", "trip_created", "map_search", "community_saved", "community_added_to_trip",
+  "community_viewed_on_map", "profile_saved", "sign_in", "sign_out", "location_permission_prompted",
+  "location_permission_result", "app_error", "pwa_install_prompt", "pwa_install_result"
+]);
+const ANALYTICS_PARAMETERS = new Set(["view_name", "source", "method", "result", "status", "step", "returning", "display_mode", "online"]);
+
+export function trackAppEvent(name, parameters = {}) {
+  if (!analyticsService || !analyticsLogEvent || !ANALYTICS_EVENTS.has(name)) return;
+  const safeParameters = {};
+  Object.entries(parameters).forEach(([key, value]) => {
+    if (!ANALYTICS_PARAMETERS.has(key)) return;
+    if (typeof value === "string") safeParameters[key] = value.slice(0, 60);
+    else if (typeof value === "number" || typeof value === "boolean") safeParameters[key] = value;
+  });
+  try { analyticsLogEvent(analyticsService, name, safeParameters); }
+  catch (error) { console.info("Analytics event unavailable.", error); }
+}
 
 export async function initializeCloud() {
   if (services) return { configured: true, auth: services.auth };
@@ -16,15 +38,24 @@ async function initializeServices() {
   const configured = Boolean(firebaseConfig?.apiKey && firebaseConfig?.projectId && firebaseConfig?.appId);
   if (!configured) return { configured: false };
 
-  const [appModule, authModule, firestoreModule, functionsModule, storageModule] = await Promise.all([
+  const [appModule, authModule, firestoreModule, functionsModule, storageModule, analyticsModule] = await Promise.all([
     import("https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js"),
     import("https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js"),
     import("https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js"),
     import("https://www.gstatic.com/firebasejs/11.10.0/firebase-functions.js"),
-    import("https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js")
+    import("https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js"),
+    import("https://www.gstatic.com/firebasejs/11.10.0/firebase-analytics.js")
   ]);
 
   const app = appModule.getApps().length ? appModule.getApp() : appModule.initializeApp(firebaseConfig);
+  try {
+    if (await analyticsModule.isSupported()) {
+      analyticsService = analyticsModule.getAnalytics(app);
+      analyticsLogEvent = analyticsModule.logEvent;
+    }
+  } catch (error) {
+    console.info("Firebase Analytics is unavailable in this browser.", error);
+  }
   services = {
     auth: authModule.getAuth(app),
     db: firestoreModule.getFirestore(app),
