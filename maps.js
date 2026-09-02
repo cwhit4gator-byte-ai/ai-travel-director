@@ -101,3 +101,18 @@ export async function renderGoogleMap(element, query) {
 
   return result.formatted_address || query;
 }
+
+
+export async function resolvePlaceCity(query) {
+  const [{ Geocoder }] = await loadLibraries();
+  geocoder ||= new Geocoder();
+  const response = await Promise.race([geocoder.geocode({ address: query }), watchForAuthenticationFailure()]);
+  const result = response.results?.[0];
+  if (!result) throw new Error("No location was found for this itinerary event.");
+  const preferredTypes = ["locality", "postal_town", "administrative_area_level_2", "administrative_area_level_1"];
+  for (const type of preferredTypes) {
+    const component = result.address_components?.find(item => item.types?.includes(type));
+    if (component?.long_name) return component.long_name;
+  }
+  throw new Error("Google Maps did not return a city for this itinerary event.");
+}

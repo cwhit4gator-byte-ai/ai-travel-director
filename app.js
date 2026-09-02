@@ -17,7 +17,7 @@ import {
   requestPhotoAnalysis,
   trackAppEvent
 } from "./firebase-client.js?v=12";
-import { renderGoogleMap } from "./maps.js?v=12";
+import { renderGoogleMap, resolvePlaceCity } from "./maps.js?v=12";
 
 const STORAGE_KEY = "aitd_v3_state";
 const ONBOARDING_KEY = "aitd_onboarding_v1";
@@ -72,7 +72,9 @@ const state = {
   currentView: "homeView",
   onboardingStep: 0,
   hotelFilter: "best",
-  selectedOvernightLocation: ""
+  selectedOvernightLocation: "",
+  hotelLocationsResolving: false,
+  hotelLocationsAttempted: false
 };
 
 const activityCatalog = [
@@ -305,9 +307,61 @@ function selectHotelForOvernight(hotelName, nightly) {
   }
   scheduleSave(); renderAll(); toast(`Hotel selected for ${stop.location}`);
 }
+function itineraryNeedsCityResolution() {
+  if (!state.trip) return false;
+  const fallback = currentDestination().toLocaleLowerCase();
+  return (state.trip.itinerary || []).some(day => {
+    const items = (day.items || []).filter(item => item.category !== "Hotel");
+    const finalItem = items.at(-1);
+    const location = String(finalItem?.location || finalItem?.city || day.overnightLocation || "").trim().toLocaleLowerCase();
+    return !location || location === fallback;
+  });
+}
+async function resolveHotelCitiesFromItinerary() {
+  if (state.hotelLocationsResolving || !state.trip) return;
+  state.hotelLocationsResolving = true;
+  state.hotelLocationsAttempted = true;
+  renderHotels();
+  let previousCity = "";
+  try {
+    for (const day of state.trip.itinerary || []) {
+      const items = (day.items || []).filter(item => item.category !== "Hotel");
+      const finalItem = items.at(-1);
+      if (!finalItem) continue;
+      const existing = String(finalItem.location || finalItem.city || "").trim();
+      const fallback = currentDestination();
+      let city = existing && existing.toLocaleLowerCase() !== fallback.toLocaleLowerCase() ? existing : "";
+      if (!city) {
+        try { city = await resolvePlaceCity(`${finalItem.name}, ${fallback}`); }
+        catch (error) { console.warn("Could not resolve final itinerary event", finalItem.name, error); }
+      }
+      city ||= previousCity;
+      if (city) {
+        finalItem.location = city;
+        day.overnightLocation = city;
+        previousCity = city;
+      }
+    }
+    scheduleSave();
+  } finally {
+    state.hotelLocationsResolving = false;
+    renderHotels();
+  }
+}
+
 function renderHotels() {
   const list = document.getElementById("hotelList");
   if (!list) return;
+  if (state.hotelLocationsResolving || (itineraryNeedsCityResolution() && !state.hotelLocationsAttempted)) {
+    document.getElementById("overnightLocationSelect").innerHTML = "";
+    document.getElementById("overnightLocationSelect").disabled = true;
+    document.getElementById("hotelDestination").textContent = "Finding the overnight cities";
+    document.getElementById("hotelIntroText").textContent = "Checking the final event on each itinerary day with Google Maps…";
+    document.getElementById("overnightLocationSummary").textContent = "Hotel stops will appear automatically when the cities are ready.";
+    list.innerHTML = `<div class="community-state"><span class="ai-pulse" aria-hidden="true">✦</span><strong>Matching itinerary events to cities…</strong></div>`;
+    if (!state.hotelLocationsResolving) resolveHotelCitiesFromItinerary();
+    return;
+  }
   const stops = tripOvernightStops();
   const picker = document.getElementById("overnightLocationSelect");
   picker.innerHTML = stops.map(stop => `<option value="${escapeHTML(stop.id)}">${escapeHTML(overnightStopLabel(stop))}</option>`).join("");
@@ -927,6 +981,7 @@ document.getElementById("chatForm").addEventListener("submit", async event => {
     const result = await createTripFromRequest(text);
     state.trip = result.trip;
     state.selectedOvernightLocation = "";
+    state.hotelLocationsAttempted = false;
     trackAppEvent("trip_created", { method: state.trip.generatedBy === "openai" ? "cloud_ai" : "local" });
     state.mapQuery = state.trip.destination;
     scheduleSave();
