@@ -38,17 +38,17 @@ async function initializeServices() {
   const configured = Boolean(firebaseConfig?.apiKey && firebaseConfig?.projectId && firebaseConfig?.appId);
   if (!configured) return { configured: false };
 
-  const [appModule, authModule, firestoreModule, functionsModule, storageModule, analyticsModule] = await Promise.all([
+  const [appModule, authModule, firestoreModule, functionsModule, storageModule] = await Promise.all([
     import("https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js"),
     import("https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js"),
     import("https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js"),
     import("https://www.gstatic.com/firebasejs/11.10.0/firebase-functions.js"),
-    import("https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js"),
-    import("https://www.gstatic.com/firebasejs/11.10.0/firebase-analytics.js")
+    import("https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js")
   ]);
 
   const app = appModule.getApps().length ? appModule.getApp() : appModule.initializeApp(firebaseConfig);
   try {
+    const analyticsModule = await import("https://www.gstatic.com/firebasejs/11.10.0/firebase-analytics.js");
     if (await analyticsModule.isSupported()) {
       analyticsService = analyticsModule.getAnalytics(app);
       analyticsLogEvent = analyticsModule.logEvent;
