@@ -32,6 +32,9 @@ jobs:
         with:
           node-version: 24
 
+      - name: Install AI planner dependencies
+        run: npm install --prefix functions --omit=dev --no-audit --no-fund
+
       - name: Deploy AI planner, community database, and storage rules
         run: npx --yes firebase-tools@15.28.2 deploy --only functions,firestore:rules,firestore:indexes,storage --project ai-travel-director --non-interactive
 
