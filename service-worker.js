@@ -1,5 +1,5 @@
-const CACHE_NAME = "ai-travel-director-v12";
-const APP_FILES = ["./?app_version=12", "./index.html", "./styles.css?v=12", "./app.js?v=12", "./firebase-client.js?v=12", "./firebase-config.js", "./maps.js?v=12", "./manifest.json?v=12", "./icon.svg"];
+const CACHE_NAME = "ai-travel-director-v13";
+const APP_FILES = ["./?app_version=13", "./index.html", "./styles.css?v=13", "./app.js?v=13", "./firebase-client.js?v=13", "./firebase-config.js", "./maps.js?v=13", "./manifest.json?v=13", "./icon.svg"];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_FILES)));
@@ -22,6 +22,6 @@ self.addEventListener("fetch", event => {
         }
         return response;
       })
-      .catch(() => caches.match(event.request).then(cached => cached || (event.request.mode === "navigate" ? caches.match("./?app_version=12") : undefined)))
+      .catch(() => caches.match(event.request).then(cached => cached || (event.request.mode === "navigate" ? caches.match("./?app_version=13") : undefined)))
   );
 });

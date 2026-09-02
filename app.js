@@ -16,8 +16,8 @@ import {
   uploadExperiencePhotos,
   requestPhotoAnalysis,
   trackAppEvent
-} from "./firebase-client.js?v=12";
-import { renderGoogleMap, resolvePlaceCity } from "./maps.js?v=12";
+} from "./firebase-client.js?v=13";
+import { renderGoogleMap, resolvePlaceCity } from "./maps.js?v=13";
 
 const STORAGE_KEY = "aitd_v3_state";
 const ONBOARDING_KEY = "aitd_onboarding_v1";
@@ -1260,7 +1260,7 @@ window.addEventListener("online", updateConnectionState);
 window.addEventListener("offline", updateConnectionState);
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; installButton.hidden = false; trackAppEvent("pwa_install_prompt", { status: "available" }); });
 installButton.addEventListener("click", async () => { if (!deferredInstallPrompt) return toast("Use your browser menu to add this app to your home screen"); deferredInstallPrompt.prompt(); const choice = await deferredInstallPrompt.userChoice; trackAppEvent("pwa_install_result", { result: choice.outcome }); deferredInstallPrompt = null; installButton.hidden = true; });
-const APP_VERSION = "12";
+const APP_VERSION = "13";
 async function registerServiceWorker() {
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
