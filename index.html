@@ -202,6 +202,26 @@
       <button class="nav-item" data-view-link="safetyView"><span>◇</span><small>Safety</small></button>
     </nav>
   </div>
+
+  <dialog id="communityPhotoDialog" class="photo-dialog" aria-labelledby="communityPhotoTitle" aria-describedby="communityPhotoDescription">
+    <div class="photo-dialog-shell">
+      <button id="closeCommunityPhoto" class="photo-dialog-close" type="button" aria-label="Close photo viewer">×</button>
+      <div class="photo-dialog-media">
+        <button id="previousCommunityPhoto" class="photo-dialog-nav previous" type="button" aria-label="Show previous photo">‹</button>
+        <img id="communityPhotoFull" alt="" />
+        <button id="nextCommunityPhoto" class="photo-dialog-nav next" type="button" aria-label="Show next photo">›</button>
+      </div>
+      <div class="photo-dialog-copy">
+        <p class="eyebrow">COMMUNITY INSIGHT</p>
+        <h2 id="communityPhotoTitle"></h2>
+        <p id="communityPhotoDescription"></p>
+        <p id="communityPhotoTravelerNote" class="photo-traveler-note"></p>
+        <div id="communityPhotoTags" class="tag-row"></div>
+        <small id="communityPhotoPosition" class="photo-position"></small>
+      </div>
+    </div>
+  </dialog>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script type="module" src="app.js"></script>
 </body>
