@@ -16,8 +16,8 @@ import {
   uploadExperiencePhotos,
   requestPhotoAnalysis,
   trackAppEvent
-} from "./firebase-client.js?v=11";
-import { renderGoogleMap } from "./maps.js?v=11";
+} from "./firebase-client.js?v=12";
+import { renderGoogleMap } from "./maps.js?v=12";
 
 const STORAGE_KEY = "aitd_v3_state";
 const ONBOARDING_KEY = "aitd_onboarding_v1";
@@ -70,7 +70,8 @@ const state = {
   syncTimer: null,
   mapQuery: saved.mapQuery || "historic architecture",
   currentView: "homeView",
-  onboardingStep: 0
+  onboardingStep: 0,
+  hotelFilter: "best"
 };
 
 const activityCatalog = [
@@ -144,6 +145,7 @@ function showView(viewId) {
   if (viewId === "plannerView") initializeChat();
   if (viewId === "itineraryView") renderItinerary();
   if (viewId === "collectionsView") renderCollections();
+  if (viewId === "hotelsView") renderHotels();
   if (viewId === "exploreView") renderMap();
 }
 
@@ -208,6 +210,47 @@ function renderRecommendations() {
   document.getElementById("recommendationList").innerHTML = cards.map(card => `
     <article class="recommendation-card"><span class="card-icon">${card.icon}</span><h3>${escapeHTML(card.title)}</h3><p>${escapeHTML(card.text)}</p><div class="tag-row"><span class="tag">${escapeHTML(card.tag)}</span></div></article>
   `).join("");
+}
+
+
+function hotelRecommendations() {
+  const destination = currentDestination();
+  if (destination === "your destination") return [];
+  const days = Math.max(1, Number(state.trip?.days || 1));
+  const tripBudget = Math.max(300, Number(state.trip?.budget || state.profile.budget || 1500));
+  const nightlyBase = Math.max(75, Math.min(450, Math.round((tripBudget * 0.35) / Math.max(1, days - 1))));
+  const interests = normalizeInterests(state.profile.interests).toLowerCase();
+  const styles = [
+    { id: "central", icon: "⌂", name: "Central landmark hotel", area: "Historic center", multiplier: 1.18, reason: interests.includes("history") || interests.includes("architecture") ? "Puts historic sights and architecture close at hand." : "Keeps major sights and transit within easy reach.", amenity: "Walkable location" },
+    { id: "value", icon: "◇", name: "Well-rated value stay", area: "Transit-connected district", multiplier: .82, reason: "Balances a lower nightly estimate with straightforward public-transit access.", amenity: "Budget conscious" },
+    { id: "quiet", icon: "≈", name: "Quiet neighborhood hotel", area: "Calmer residential area", multiplier: .96, reason: `Fits a ${state.profile.pace || "balanced"} pace with a calmer base away from the busiest blocks.`, amenity: "Quieter setting" }
+  ];
+  const filtered = state.hotelFilter === "best" ? styles : [...styles].sort((a, b) => Number(b.id === state.hotelFilter) - Number(a.id === state.hotelFilter));
+  return filtered.map(hotel => ({ ...hotel, nightly: Math.round(nightlyBase * hotel.multiplier), destination }));
+}
+function hotelSearchLinks(hotel) {
+  const query = `${hotel.name} in ${hotel.destination}`;
+  return {
+    google: `https://www.google.com/travel/search?q=${encodeURIComponent(query)}`,
+    booking: `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(hotel.destination)}`,
+    expedia: `https://www.expedia.com/Hotel-Search?destination=${encodeURIComponent(hotel.destination)}`
+  };
+}
+function renderHotels() {
+  const list = document.getElementById("hotelList");
+  if (!list) return;
+  const destination = currentDestination();
+  document.getElementById("hotelDestination").textContent = destination === "your destination" ? "Plan a trip to personalize your stays" : `Recommended stay styles for ${destination}`;
+  document.getElementById("hotelIntroText").textContent = destination === "your destination" ? "Choose a destination and the app will recommend stay styles around your budget, pace, and interests." : `Matched to your ${state.profile.pace || "balanced"} pace and ${Number(state.trip?.budget || state.profile.budget || 0).toLocaleString("en-US")} working trip budget.`;
+  const hotels = hotelRecommendations();
+  if (!hotels.length) {
+    list.innerHTML = `<div class="empty-state"><span class="empty-icon">▤</span><h2>No destination yet</h2><p>Create a trip first so hotel searches open for the right destination.</p><button class="primary-button" data-view-link="plannerView">Plan a trip</button></div>`;
+    bindViewLinks(list); return;
+  }
+  list.innerHTML = hotels.map(hotel => {
+    const links = hotelSearchLinks(hotel);
+    return `<article class="hotel-card"><div class="hotel-card-top"><span class="hotel-icon" aria-hidden="true">${hotel.icon}</span><div><p class="eyebrow">${escapeHTML(hotel.area)}</p><h2>${escapeHTML(hotel.name)}</h2></div></div><p class="hotel-reason">${escapeHTML(hotel.reason)}</p><div class="hotel-facts"><span>About <strong>${hotel.nightly.toLocaleString("en-US")}/night</strong></span><span>${escapeHTML(hotel.amenity)}</span></div><div class="hotel-actions"><button class="secondary-button" type="button" data-hotel-map="${escapeHTML(hotel.name)}">View on map</button><button class="secondary-button" type="button" data-hotel-trip="${escapeHTML(hotel.name)}" data-hotel-rate="${hotel.nightly}">Add to trip</button></div><div class="booking-links" aria-label="Search booking providers"><a class="primary-button" href="${links.google}" target="_blank" rel="noopener noreferrer" data-booking-provider="Google Hotels">Search Google Hotels</a><a href="${links.booking}" target="_blank" rel="noopener noreferrer" data-booking-provider="Booking.com">Booking.com</a><a href="${links.expedia}" target="_blank" rel="noopener noreferrer" data-booking-provider="Expedia">Expedia</a></div></article>`;
+  }).join("");
 }
 
 function communityItems() {
@@ -783,6 +826,7 @@ function renderAll() {
   renderCommunity();
   renderItinerary();
   renderCollections();
+  renderHotels();
 }
 
 bindViewLinks();
@@ -827,6 +871,15 @@ document.getElementById("chatForm").addEventListener("submit", async event => {
 document.getElementById("mapSearchForm").addEventListener("submit", event => { event.preventDefault(); const query = document.getElementById("mapSearchInput").value.trim(); if (query) { trackAppEvent("map_search", { method: "typed" }); updateMap(query); } });
 document.querySelectorAll(".filter-chip").forEach(button => button.addEventListener("click", () => { document.querySelectorAll(".filter-chip").forEach(item => item.classList.remove("active")); button.classList.add("active"); trackAppEvent("map_search", { method: "category" }); updateMap(button.dataset.mapFilter); }));
 document.getElementById("placeList").addEventListener("click", event => { const button = event.target.closest("[data-add-place]"); if (button) addPlaceToTrip(button.dataset.addPlace, button.dataset.placeCategory, button.dataset.placeCost); });
+document.querySelector(".hotel-toolbar").addEventListener("click", event => { const button = event.target.closest("[data-hotel-filter]"); if (!button) return; state.hotelFilter = button.dataset.hotelFilter; document.querySelectorAll("[data-hotel-filter]").forEach(item => item.classList.toggle("active", item === button)); renderHotels(); });
+document.getElementById("hotelList").addEventListener("click", event => {
+  const mapButton = event.target.closest("[data-hotel-map]");
+  if (mapButton) { state.mapQuery = `${mapButton.dataset.hotelMap} in ${currentDestination()}`; showView("exploreView"); return; }
+  const tripButton = event.target.closest("[data-hotel-trip]");
+  if (tripButton) addPlaceToTrip(tripButton.dataset.hotelTrip, "Hotel", tripButton.dataset.hotelRate);
+  const bookingLink = event.target.closest("[data-booking-provider]");
+  if (bookingLink) trackAppEvent("hotel_booking_link_opened", { provider: bookingLink.dataset.bookingProvider, destination: currentDestination() });
+});
 document.getElementById("communityMapList").addEventListener("click", event => { const button = event.target.closest("[data-map-community]"); if (button) { state.mapQuery = button.dataset.mapCommunity; updateMap(state.mapQuery); } });
 document.getElementById("locateMeButton").addEventListener("click", () => {
   trackAppEvent("location_permission_prompted", { source: "explore" });
@@ -1078,7 +1131,7 @@ window.addEventListener("online", updateConnectionState);
 window.addEventListener("offline", updateConnectionState);
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; installButton.hidden = false; trackAppEvent("pwa_install_prompt", { status: "available" }); });
 installButton.addEventListener("click", async () => { if (!deferredInstallPrompt) return toast("Use your browser menu to add this app to your home screen"); deferredInstallPrompt.prompt(); const choice = await deferredInstallPrompt.userChoice; trackAppEvent("pwa_install_result", { result: choice.outcome }); deferredInstallPrompt = null; installButton.hidden = true; });
-const APP_VERSION = "11";
+const APP_VERSION = "12";
 async function registerServiceWorker() {
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {

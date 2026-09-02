@@ -3,7 +3,7 @@
   "short_name": "Travel AI",
   "description": "AI-first travel planning, maps, live itineraries, traveler insights, and safety tools.",
   "id": "./",
-  "start_url": "./?app_version=11",
+  "start_url": "./?app_version=12",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
