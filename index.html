@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b1830" />
   <meta name="description" content="AI-first travel planning, live itineraries, maps, traveler insights, and safety tools." />
   <title>AI Travel Director</title>
-  <link rel="manifest" href="manifest.json?v=11" />
+  <link rel="manifest" href="manifest.json?v=12" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=11" />
+  <link rel="stylesheet" href="styles.css?v=12" />
 </head>
 <body>
   <div class="app-shell">
@@ -53,6 +53,9 @@
           </button>
           <button class="metric-card" data-view-link="collectionsView">
             <span class="metric-icon">☆</span><span><small>COLLECTIONS</small><strong id="homeCollectionsMetric">Nothing saved yet</strong></span>
+          </button>
+          <button class="metric-card" data-view-link="hotelsView">
+            <span class="metric-icon">▤</span><span><small>HOTELS</small><strong id="homeHotelsMetric">Find the right stay</strong></span>
           </button>
         </section>
 
@@ -152,6 +155,16 @@
         </div>
         <p class="view-intro">Organize traveler recommendations for future trips. Collections sync privately when your account is connected.</p>
         <div id="collectionsList" class="collections-list"></div>
+      </section>
+
+      <section id="hotelsView" class="view" aria-labelledby="hotelsHeading">
+        <div class="section-heading page-heading"><div><p class="eyebrow">STAYS FOR YOUR TRIP</p><h1 id="hotelsHeading">Hotel recommendations</h1></div><button class="round-button" data-view-link="homeView" aria-label="Close hotel recommendations">×</button></div>
+        <article class="hotel-intro"><span class="hotel-intro-icon" aria-hidden="true">▤</span><div><strong id="hotelDestination">Plan a trip to personalize your stays</strong><p id="hotelIntroText">Choose a destination and the app will recommend stay styles around your budget, pace, and interests.</p></div></article>
+        <div class="overnight-picker"><label for="overnightLocationSelect">Choose an AI-recommended overnight location</label><select id="overnightLocationSelect"></select><p id="overnightLocationSummary" class="field-note">Locations are populated automatically from your trip itinerary.</p></div>
+        <p class="hotel-step-label">Then choose the kind of stay</p>
+        <div class="hotel-toolbar" aria-label="Hotel preference"><button class="filter-chip active" type="button" data-hotel-filter="best">Best match</button><button class="filter-chip" type="button" data-hotel-filter="value">Best value</button><button class="filter-chip" type="button" data-hotel-filter="central">Central</button><button class="filter-chip" type="button" data-hotel-filter="quiet">Quiet</button></div>
+        <div id="hotelList" class="hotel-grid"></div>
+        <p class="booking-disclaimer">Prices are planning estimates, not live quotes. Availability, total price, taxes, fees, cancellation terms, and accessibility must be confirmed with the booking provider. Travel AI does not complete reservations.</p>
       </section>
 
       <section id="safetyView" class="view" aria-labelledby="safetyHeading">
@@ -310,6 +323,6 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="app.js?v=11"></script>
+  <script type="module" src="app.js?v=12"></script>
 </body>
 </html>

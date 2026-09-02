@@ -16,8 +16,8 @@ import {
   uploadExperiencePhotos,
   requestPhotoAnalysis,
   trackAppEvent
-} from "./firebase-client.js?v=11";
-import { renderGoogleMap } from "./maps.js?v=11";
+} from "./firebase-client.js?v=12";
+import { renderGoogleMap, resolvePlaceCity } from "./maps.js?v=12";
 
 const STORAGE_KEY = "aitd_v3_state";
 const ONBOARDING_KEY = "aitd_onboarding_v1";
@@ -70,7 +70,11 @@ const state = {
   syncTimer: null,
   mapQuery: saved.mapQuery || "historic architecture",
   currentView: "homeView",
-  onboardingStep: 0
+  onboardingStep: 0,
+  hotelFilter: "best",
+  selectedOvernightLocation: "",
+  hotelLocationsResolving: false,
+  hotelLocationsAttempted: false
 };
 
 const activityCatalog = [
@@ -144,6 +148,7 @@ function showView(viewId) {
   if (viewId === "plannerView") initializeChat();
   if (viewId === "itineraryView") renderItinerary();
   if (viewId === "collectionsView") renderCollections();
+  if (viewId === "hotelsView") renderHotels();
   if (viewId === "exploreView") renderMap();
 }
 
@@ -208,6 +213,174 @@ function renderRecommendations() {
   document.getElementById("recommendationList").innerHTML = cards.map(card => `
     <article class="recommendation-card"><span class="card-icon">${card.icon}</span><h3>${escapeHTML(card.title)}</h3><p>${escapeHTML(card.text)}</p><div class="tag-row"><span class="tag">${escapeHTML(card.tag)}</span></div></article>
   `).join("");
+}
+
+
+function inferOvernightLocation(day, fallback = "") {
+  const items = Array.isArray(day?.items) ? day.items : [];
+  const finalEventLocation = [...items].reverse().map(item => String(item?.location || item?.city || "").trim()).find(Boolean);
+  if (finalEventLocation) return finalEventLocation;
+  const explicit = String(day?.location || day?.overnightLocation || "").trim();
+  if (explicit && explicit.toLocaleLowerCase() !== String(fallback).toLocaleLowerCase()) return explicit;
+  const title = String(day?.title || "").trim();
+  const prefix = String(title.match(/^(?:day\s*\d+\s*[:—–-]\s*)?([^:—–|]{2,60})\s*[:—–|]/iu)?.[1] || "").trim();
+  const words = prefix.split(/\s+/).filter(Boolean);
+  const actionWords = /\b(after|before|pick|picking|rental|car|drive|driving|travel|traveling|journey|arrival|arrive|departure|depart|explore|exploring|visit|visiting|tour|touring|scenic|flexible|final|morning|afternoon|evening|day)\b/i;
+  if (prefix && words.length <= 4 && !actionWords.test(prefix)) return prefix;
+  return "";
+}
+function tripOvernightStops() {
+  if (!state.trip) return [];
+  const fallback = currentDestination();
+  const stops = [];
+  let currentLocation = "";
+  (state.trip.itinerary || []).forEach((day, index) => {
+    const detected = inferOvernightLocation(day, fallback);
+    if (detected) currentLocation = detected;
+    if (!currentLocation) currentLocation = fallback;
+    const location = currentLocation;
+    if (!location) return;
+    const dayNumber = Number(day.day || index + 1);
+    const previous = stops.at(-1);
+    if (previous && previous.location.toLocaleLowerCase() === location.toLocaleLowerCase()) {
+      previous.days.push(dayNumber);
+      previous.endDay = dayNumber;
+      previous.id = `${previous.location}::${previous.startDay}-${previous.endDay}`;
+    } else {
+      stops.push({ id: `${location}::${dayNumber}-${dayNumber}`, location, days: [dayNumber], startDay: dayNumber, endDay: dayNumber });
+    }
+  });
+  if (stops.length) return stops;
+  return (state.trip.overnightLocations || []).map((location, index) => ({ id: `${location}::${index + 1}`, location: String(location), days: [], startDay: index + 1, endDay: index + 1 }));
+}
+function selectedOvernightStop() {
+  const stops = tripOvernightStops();
+  let stop = stops.find(item => item.id === state.selectedOvernightLocation);
+  if (!stop) stop = stops.find(item => item.location === state.selectedOvernightLocation);
+  stop ||= stops[0];
+  state.selectedOvernightLocation = stop?.id || "";
+  return stop || null;
+}
+function selectedOvernightLocation() {
+  return selectedOvernightStop()?.location || "";
+}
+function overnightStopLabel(stop) {
+  if (!stop) return "";
+  const nightCount = Math.max(1, stop.days.length);
+  return `${stop.location} · ${nightCount} night${nightCount === 1 ? "" : "s"}`;
+}
+function hotelRecommendations() {
+  const stop = selectedOvernightStop();
+  const location = stop?.location || "";
+  if (!location) return [];
+  const days = Math.max(1, Number(state.trip?.days || 1));
+  const tripBudget = Math.max(300, Number(state.trip?.budget || state.profile.budget || 1500));
+  const locationCount = Math.max(1, tripOvernightStops().length);
+  const nightlyBase = Math.max(75, Math.min(450, Math.round((tripBudget * .35) / Math.max(1, days - 1) * Math.min(1.15, locationCount))));
+  const interests = normalizeInterests(state.profile.interests).toLowerCase();
+  const styles = [
+    { id: "central", icon: "⌂", name: "Central landmark hotel", area: "Historic center", multiplier: 1.18, reason: interests.includes("history") || interests.includes("architecture") ? "Puts historic sights and architecture close at hand." : "Keeps major sights and transit within easy reach.", amenity: "Walkable location" },
+    { id: "value", icon: "◇", name: "Well-rated value stay", area: "Transit-connected district", multiplier: .82, reason: "Balances a lower nightly estimate with straightforward public-transit access.", amenity: "Budget conscious" },
+    { id: "quiet", icon: "≈", name: "Quiet neighborhood hotel", area: "Calmer residential area", multiplier: .96, reason: `Fits a ${state.profile.pace || "balanced"} pace with a calmer base away from the busiest blocks.`, amenity: "Quieter setting" }
+  ];
+  const ordered = state.hotelFilter === "best" ? styles : [...styles].sort((a,b) => Number(b.id === state.hotelFilter) - Number(a.id === state.hotelFilter));
+  return ordered.map(hotel => ({ ...hotel, nightly: Math.round(nightlyBase * hotel.multiplier), location, stopId: stop.id, nights: stop.days.length }));
+}
+function hotelSearchLinks(hotel) {
+  const query = `${hotel.name} in ${hotel.location}`;
+  return {
+    google: `https://www.google.com/travel/search?q=${encodeURIComponent(query)}`,
+    booking: `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(hotel.location)}`,
+    expedia: `https://www.expedia.com/Hotel-Search?destination=${encodeURIComponent(hotel.location)}`
+  };
+}
+function selectHotelForOvernight(hotelName, nightly) {
+  if (!state.trip) return showView("plannerView");
+  const stop = selectedOvernightStop();
+  if (!stop) return;
+  state.trip.hotelSelections ||= {};
+  state.trip.hotelSelections[stop.id] = { name: hotelName, nightly: Number(nightly), location: stop.location, nights: stop.days.length, selectedAt: new Date().toISOString() };
+  const day = (state.trip.itinerary || []).find(item => stop.days.includes(Number(item.day))) || state.trip.itinerary?.[0];
+  if (day) {
+    day.items = (day.items || []).filter(item => !(item.category === "Hotel" && item.hotelStopId === stop.id));
+    day.items.push({ id: crypto.randomUUID(), time: "Overnight", name: hotelName, category: "Hotel", cost: Number(nightly) * Math.max(1, stop.days.length), hotelStopId: stop.id, overnightLocation: stop.location, note: `Selected for a ${stop.days.length || 1}-night stay in ${stop.location}. Nightly price is an estimate; confirm the final total and terms with the booking provider.`, done: false });
+  }
+  scheduleSave(); renderAll(); toast(`Hotel selected for ${stop.location}`);
+}
+function itineraryNeedsCityResolution() {
+  if (!state.trip) return false;
+  const fallback = currentDestination().toLocaleLowerCase();
+  return (state.trip.itinerary || []).some(day => {
+    const items = (day.items || []).filter(item => item.category !== "Hotel");
+    const finalItem = items.at(-1);
+    const location = String(finalItem?.location || finalItem?.city || day.overnightLocation || "").trim().toLocaleLowerCase();
+    return !location || location === fallback;
+  });
+}
+async function resolveHotelCitiesFromItinerary() {
+  if (state.hotelLocationsResolving || !state.trip) return;
+  state.hotelLocationsResolving = true;
+  state.hotelLocationsAttempted = true;
+  renderHotels();
+  let previousCity = "";
+  try {
+    for (const day of state.trip.itinerary || []) {
+      const items = (day.items || []).filter(item => item.category !== "Hotel");
+      const finalItem = items.at(-1);
+      if (!finalItem) continue;
+      const existing = String(finalItem.location || finalItem.city || "").trim();
+      const fallback = currentDestination();
+      let city = existing && existing.toLocaleLowerCase() !== fallback.toLocaleLowerCase() ? existing : "";
+      if (!city) {
+        try { city = await resolvePlaceCity(`${finalItem.name}, ${fallback}`); }
+        catch (error) { console.warn("Could not resolve final itinerary event", finalItem.name, error); }
+      }
+      city ||= previousCity;
+      if (city) {
+        finalItem.location = city;
+        day.overnightLocation = city;
+        previousCity = city;
+      }
+    }
+    scheduleSave();
+  } finally {
+    state.hotelLocationsResolving = false;
+    renderHotels();
+  }
+}
+
+function renderHotels() {
+  const list = document.getElementById("hotelList");
+  if (!list) return;
+  if (state.hotelLocationsResolving || (itineraryNeedsCityResolution() && !state.hotelLocationsAttempted)) {
+    document.getElementById("overnightLocationSelect").innerHTML = "";
+    document.getElementById("overnightLocationSelect").disabled = true;
+    document.getElementById("hotelDestination").textContent = "Finding the overnight cities";
+    document.getElementById("hotelIntroText").textContent = "Checking the final event on each itinerary day with Google Maps…";
+    document.getElementById("overnightLocationSummary").textContent = "Hotel stops will appear automatically when the cities are ready.";
+    list.innerHTML = `<div class="community-state"><span class="ai-pulse" aria-hidden="true">✦</span><strong>Matching itinerary events to cities…</strong></div>`;
+    if (!state.hotelLocationsResolving) resolveHotelCitiesFromItinerary();
+    return;
+  }
+  const stops = tripOvernightStops();
+  const picker = document.getElementById("overnightLocationSelect");
+  picker.innerHTML = stops.map(stop => `<option value="${escapeHTML(stop.id)}">${escapeHTML(overnightStopLabel(stop))}</option>`).join("");
+  picker.disabled = !stops.length;
+  const stop = selectedOvernightStop();
+  const location = stop?.location || "";
+  if (stop) picker.value = stop.id;
+  document.getElementById("overnightLocationSummary").textContent = stop ? `${overnightStopLabel(stop)} · one hotel covers this stop` : "Plan a trip to generate recommended overnight locations.";
+  document.getElementById("hotelDestination").textContent = location ? `Three hotel options for ${location}` : "Plan a trip to personalize your stays";
+  document.getElementById("hotelIntroText").textContent = location ? `Choose this overnight stop first, then compare three stays matched to your ${state.profile.pace || "balanced"} pace and working budget.` : "Choose a destination and the app will identify each overnight stop before showing hotels.";
+  const hotels = hotelRecommendations();
+  if (!hotels.length) {
+    list.innerHTML = `<div class="empty-state"><span class="empty-icon">▤</span><h2>No overnight locations yet</h2><p>Create or regenerate the trip so the AI can populate its recommended overnight locations.</p><button class="primary-button" data-view-link="plannerView">Plan a trip</button></div>`; bindViewLinks(list); return;
+  }
+  list.innerHTML = hotels.map(hotel => {
+    const links = hotelSearchLinks(hotel);
+    const selected = state.trip?.hotelSelections?.[hotel.stopId]?.name === hotel.name;
+    return `<article class="hotel-card${selected ? " selected-hotel" : ""}"><div class="hotel-card-top"><span class="hotel-icon" aria-hidden="true">${hotel.icon}</span><div><p class="eyebrow">${escapeHTML(hotel.area)} · ${escapeHTML(hotel.location)}</p><h2>${escapeHTML(hotel.name)}</h2></div></div><p class="hotel-reason">${escapeHTML(hotel.reason)}</p><div class="hotel-facts"><span>About <strong>$${hotel.nightly.toLocaleString("en-US")}/night</strong></span><span>${escapeHTML(hotel.amenity)}</span></div><div class="hotel-actions"><button class="secondary-button" type="button" data-hotel-map="${escapeHTML(hotel.name)}">View on map</button><button class="secondary-button" type="button" data-hotel-select="${escapeHTML(hotel.name)}" data-hotel-rate="${hotel.nightly}" ${selected ? "disabled" : ""}>${selected ? "✓ Selected" : "Select for this stop"}</button></div><div class="booking-links" aria-label="Search booking providers"><a class="primary-button" href="${links.google}" target="_blank" rel="noopener noreferrer" data-booking-provider="Google Hotels">Search Google Hotels</a><a href="${links.booking}" target="_blank" rel="noopener noreferrer" data-booking-provider="Booking.com">Booking.com</a><a href="${links.expedia}" target="_blank" rel="noopener noreferrer" data-booking-provider="Expedia">Expedia</a></div></article>`;
+  }).join("");
 }
 
 function communityItems() {
@@ -561,35 +734,31 @@ function buildLocalTrip(text) {
     return {
       day: dayIndex + 1,
       title: dayIndex === 0 ? "Arrival and orientation" : dayIndex === days - 1 ? "Flexible final day" : `${dayActivities[0].category} and local discovery`,
+      overnightLocation: destination,
       items: dayActivities.map((activity, index) => ({ ...activity, id: crypto.randomUUID(), time: index === 0 ? "9:30 AM" : index === 1 ? "1:00 PM" : "4:00 PM", done: false }))
     };
   });
-  return { destination, days, budget, itinerary, sourceRequest: text, generatedBy: "local", createdAt: new Date().toISOString() };
+  return { destination, days, budget, overnightLocations: [destination], itinerary, sourceRequest: text, generatedBy: "local", createdAt: new Date().toISOString() };
 }
 
 function normalizeAITrip(result, sourceRequest) {
   const raw = result?.trip || result;
   const days = Array.isArray(raw?.itinerary) ? raw.itinerary.slice(0, 10) : [];
-  return {
-    destination: String(raw?.destination || parseDestination(sourceRequest)),
-    days: Math.max(1, Math.min(Number(raw?.days || days.length || parseDays(sourceRequest)), 10)),
-    budget: Number(raw?.budget || parseBudget(sourceRequest)),
-    sourceRequest,
-    generatedBy: "openai",
-    createdAt: new Date().toISOString(),
-    itinerary: days.map((day, dayIndex) => ({
-      day: Number(day.day || dayIndex + 1),
-      title: String(day.title || `Day ${dayIndex + 1}`),
-      items: (Array.isArray(day.items) ? day.items : []).slice(0, 5).map((item, itemIndex) => ({
-        id: crypto.randomUUID(), time: String(item.time || `${9 + itemIndex * 2}:00`), name: String(item.name || "Planned activity"), note: String(item.reason || item.note || "Matched to your travel preferences."), category: String(item.category || "AI plan"), cost: Number(item.cost || 0), done: false
-      }))
-    }))
-  };
+  const destination = String(raw?.destination || parseDestination(sourceRequest));
+  const itinerary = days.map((day, dayIndex) => {
+    const rawItems = Array.isArray(day.items) ? day.items : [];
+    const items = rawItems.slice(0, 5).map((item, itemIndex) => ({
+      id: crypto.randomUUID(), time: String(item.time || `${9 + itemIndex * 2}:00`), name: String(item.name || "Planned activity"), location: String(item.location || item.city || ""), note: String(item.reason || item.note || "Matched to your travel preferences."), category: String(item.category || "AI plan"), cost: Number(item.cost || 0), done: false
+    }));
+    const overnightLocation = [...items].reverse().map(item => item.location.trim()).find(Boolean) || inferOvernightLocation(day, destination) || destination;
+    return { day: Number(day.day || dayIndex + 1), title: String(day.title || `Day ${dayIndex + 1}`), overnightLocation, items };
+  });
+  return { destination, days: Math.max(1, Math.min(Number(raw?.days || days.length || parseDays(sourceRequest)), 10)), budget: Number(raw?.budget || parseBudget(sourceRequest)), sourceRequest, generatedBy: "openai", createdAt: new Date().toISOString(), overnightLocations: [...new Set(itinerary.map(day => day.overnightLocation).filter(Boolean))], itinerary };
 }
-
 async function createTripFromRequest(text) {
   if (state.user && state.cloudConfigured && navigator.onLine) {
-    const result = await requestAITrip({ request: text, profile: state.profile, communityInsights: communityItems().slice(0, 8) });
+    const itineraryRequest = `${text}\nGive every itinerary event its city or town in a location field. Set each day’s overnightLocation to the location of that day’s final event. Also begin the day title with that city, formatted exactly as "City — theme". For a route, use the actual city rather than the country or region.`;
+    const result = await requestAITrip({ request: itineraryRequest, profile: state.profile, communityInsights: communityItems().slice(0, 8) });
     return { trip: normalizeAITrip(result, text), message: result.message || "I created a personalized draft itinerary. No bookings were made." };
   }
   const trip = buildLocalTrip(text);
@@ -783,6 +952,7 @@ function renderAll() {
   renderCommunity();
   renderItinerary();
   renderCollections();
+  renderHotels();
 }
 
 bindViewLinks();
@@ -810,6 +980,8 @@ document.getElementById("chatForm").addEventListener("submit", async event => {
     trackAppEvent("trip_plan_requested", { method: state.user && state.cloudConfigured && navigator.onLine ? "cloud_ai" : "local" });
     const result = await createTripFromRequest(text);
     state.trip = result.trip;
+    state.selectedOvernightLocation = "";
+    state.hotelLocationsAttempted = false;
     trackAppEvent("trip_created", { method: state.trip.generatedBy === "openai" ? "cloud_ai" : "local" });
     state.mapQuery = state.trip.destination;
     scheduleSave();
@@ -825,8 +997,18 @@ document.getElementById("chatForm").addEventListener("submit", async event => {
 });
 
 document.getElementById("mapSearchForm").addEventListener("submit", event => { event.preventDefault(); const query = document.getElementById("mapSearchInput").value.trim(); if (query) { trackAppEvent("map_search", { method: "typed" }); updateMap(query); } });
-document.querySelectorAll(".filter-chip").forEach(button => button.addEventListener("click", () => { document.querySelectorAll(".filter-chip").forEach(item => item.classList.remove("active")); button.classList.add("active"); trackAppEvent("map_search", { method: "category" }); updateMap(button.dataset.mapFilter); }));
+document.querySelectorAll("[data-map-filter]").forEach(button => button.addEventListener("click", () => { document.querySelectorAll("[data-map-filter]").forEach(item => item.classList.remove("active")); button.classList.add("active"); trackAppEvent("map_search", { method: "category" }); updateMap(button.dataset.mapFilter); }));
 document.getElementById("placeList").addEventListener("click", event => { const button = event.target.closest("[data-add-place]"); if (button) addPlaceToTrip(button.dataset.addPlace, button.dataset.placeCategory, button.dataset.placeCost); });
+document.getElementById("overnightLocationSelect").addEventListener("change", event => { state.selectedOvernightLocation = event.target.value; renderHotels(); });
+document.querySelector(".hotel-toolbar").addEventListener("click", event => { const button = event.target.closest("[data-hotel-filter]"); if (!button) return; state.hotelFilter = button.dataset.hotelFilter; document.querySelectorAll("[data-hotel-filter]").forEach(item => item.classList.toggle("active", item === button)); renderHotels(); });
+document.getElementById("hotelList").addEventListener("click", event => {
+  const mapButton = event.target.closest("[data-hotel-map]");
+  if (mapButton) { state.mapQuery = `${mapButton.dataset.hotelMap} in ${selectedOvernightLocation()}`; showView("exploreView"); return; }
+  const selectButton = event.target.closest("[data-hotel-select]");
+  if (selectButton) selectHotelForOvernight(selectButton.dataset.hotelSelect, selectButton.dataset.hotelRate);
+  const bookingLink = event.target.closest("[data-booking-provider]");
+  if (bookingLink) trackAppEvent("hotel_booking_link_opened", { provider: bookingLink.dataset.bookingProvider, destination: selectedOvernightLocation() });
+});
 document.getElementById("communityMapList").addEventListener("click", event => { const button = event.target.closest("[data-map-community]"); if (button) { state.mapQuery = button.dataset.mapCommunity; updateMap(state.mapQuery); } });
 document.getElementById("locateMeButton").addEventListener("click", () => {
   trackAppEvent("location_permission_prompted", { source: "explore" });
@@ -1078,7 +1260,7 @@ window.addEventListener("online", updateConnectionState);
 window.addEventListener("offline", updateConnectionState);
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; installButton.hidden = false; trackAppEvent("pwa_install_prompt", { status: "available" }); });
 installButton.addEventListener("click", async () => { if (!deferredInstallPrompt) return toast("Use your browser menu to add this app to your home screen"); deferredInstallPrompt.prompt(); const choice = await deferredInstallPrompt.userChoice; trackAppEvent("pwa_install_result", { result: choice.outcome }); deferredInstallPrompt = null; installButton.hidden = true; });
-const APP_VERSION = "11";
+const APP_VERSION = "12";
 async function registerServiceWorker() {
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {

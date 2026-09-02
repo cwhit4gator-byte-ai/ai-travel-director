@@ -32,8 +32,8 @@ jobs:
         with:
           node-version: 24
 
-      - name: Deploy community database and storage rules
-        run: npx --yes firebase-tools@15.28.2 deploy --only firestore:rules,firestore:indexes,storage --project ai-travel-director --non-interactive
+      - name: Deploy AI planner, community database, and storage rules
+        run: npx --yes firebase-tools@15.28.2 deploy --only functions,firestore:rules,firestore:indexes,storage --project ai-travel-director --non-interactive
 
       - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
