@@ -5,6 +5,16 @@ let marker = null;
 let geocoder = null;
 let librariesPromise = null;
 let renderSequence = 0;
+let authenticationFailure = null;
+
+function watchForAuthenticationFailure() {
+  if (!authenticationFailure) {
+    authenticationFailure = new Promise((resolve, reject) => {
+      window.gm_authFailure = () => reject(new Error("Google Maps authentication was rejected."));
+    });
+  }
+  return authenticationFailure;
+}
 
 function installGoogleMapsLoader({ apiKey, version = "weekly" }) {
   window.google ||= {};
@@ -47,13 +57,14 @@ async function loadLibraries() {
     throw new Error("Google Maps is not configured.");
   }
 
+  const authFailure = watchForAuthenticationFailure();
   installGoogleMapsLoader(googleMapsConfig);
   librariesPromise ||= Promise.all([
     window.google.maps.importLibrary("maps"),
     window.google.maps.importLibrary("marker"),
     window.google.maps.importLibrary("geocoding")
   ]);
-  return librariesPromise;
+  return Promise.race([librariesPromise, authFailure]);
 }
 
 export async function renderGoogleMap(element, query) {
@@ -72,7 +83,10 @@ export async function renderGoogleMap(element, query) {
   });
   geocoder ||= new Geocoder();
 
-  const response = await geocoder.geocode({ address: query });
+  const response = await Promise.race([
+    geocoder.geocode({ address: query }),
+    watchForAuthenticationFailure()
+  ]);
   const result = response.results?.[0];
   if (!result) throw new Error("No map result was found.");
   if (sequence !== renderSequence) return result.formatted_address || query;
