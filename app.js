@@ -52,6 +52,7 @@ const state = {
   communityAudience: "All travelers",
   helpfulIds: new Set(),
   reportedIds: new Set(),
+  isReplanningCommunity: false,
   user: null,
   cloudConfigured: false,
   syncTimer: null,
@@ -213,6 +214,7 @@ function renderCommunity() {
     const description = String(item.photoAnalysis?.description || item.text || `${item.place || "Travel experience"} photo`);
     const helpful = state.helpfulIds.has(String(item.id));
     const reported = state.reportedIds.has(String(item.id));
+    const savedInTrip = Boolean(state.trip?.itinerary?.some(day => (day.items || []).some(tripItem => String(tripItem.communityPostId || "") === String(item.id))));
     const createdDate = item.createdAt ? new Date(item.createdAt) : null;
     const dateLabel = createdDate && !Number.isNaN(createdDate.valueOf()) ? createdDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Recent insight";
     const gallery = photos.length ? `
@@ -233,6 +235,7 @@ function renderCommunity() {
           <p>${escapeHTML(item.text)}</p>
           <div class="tag-row"><span class="tag">${escapeHTML(item.audience)}</span><span class="tag">Traveler-reported</span></div>
           <div class="community-actions">
+            <button class="insight-action primary-insight-action${savedInTrip ? " selected" : ""}" type="button" data-community-save="${escapeHTML(item.id)}" ${savedInTrip ? "disabled" : ""}>${savedInTrip ? "✓ In your trip" : state.trip ? "＋ Add to trip" : "✦ Plan with this"}</button>
             <button class="insight-action${helpful ? " selected" : ""}" type="button" data-community-helpful="${escapeHTML(item.id)}" aria-pressed="${helpful}" ${item.isShared ? "" : "disabled"}>${helpful ? "✓ Helpful" : "♡ Helpful"}</button>
             <button class="insight-action" type="button" data-community-map="${escapeHTML(item.place)}">⌖ View on map</button>
             <button class="insight-action report" type="button" data-community-report="${escapeHTML(item.id)}" ${!item.isShared || reported ? "disabled" : ""}>${reported ? "Reported" : "Report"}</button>
@@ -321,6 +324,97 @@ function moveCommunityPhoto(direction) {
   const photoCount = (Array.isArray(experience?.photoURLs) ? experience.photoURLs : []).map(safeImageURL).filter(Boolean).length;
   if (!photoCount) return;
   openCommunityPhoto(activeCommunityPhoto.experienceId, (activeCommunityPhoto.index + direction + photoCount) % photoCount);
+}
+
+function communityExperienceById(experienceId) {
+  return communityItems().find(item => String(item.id) === String(experienceId));
+}
+
+function addCommunityExperienceToTrip(experience) {
+  if (!state.trip) {
+    const prompt = `Plan a trip that includes ${experience.place}. A traveler shared this advice: ${experience.text || "Include this community recommendation."}`;
+    document.getElementById("chatInput").value = prompt;
+    showView("plannerView");
+    document.getElementById("chatInput").focus();
+    toast("Tell the AI your dates and budget to plan with this insight");
+    return;
+  }
+
+  const existing = state.trip.itinerary?.some(day => (day.items || []).some(item => String(item.communityPostId || "") === String(experience.id)));
+  if (existing) {
+    toast("This community pick is already in your trip");
+    return;
+  }
+
+  if (!Array.isArray(state.trip.itinerary) || !state.trip.itinerary.length) {
+    state.trip.itinerary = [{ day: 1, title: "Community discoveries", items: [] }];
+    state.trip.days = Math.max(1, Number(state.trip.days || 1));
+  }
+
+  const targetDay = state.trip.itinerary.reduce((best, day) => (day.items || []).length < (best.items || []).length ? day : best, state.trip.itinerary[0]);
+  if (!Array.isArray(targetDay.items)) targetDay.items = [];
+  targetDay.items.push({
+    id: crypto.randomUUID(),
+    time: "Flexible",
+    name: String(experience.place || "Community recommendation"),
+    note: String(experience.text || "Recommended by a traveler in the community."),
+    category: "Community pick",
+    cost: 0,
+    done: false,
+    communityPostId: String(experience.id),
+    communityRating: Math.max(1, Number(experience.rating) || 1),
+    communityAudience: String(experience.audience || "Everyone")
+  });
+
+  scheduleSave();
+  renderCommunity();
+  renderItinerary();
+  showView("itineraryView");
+  toast(`${experience.place} was added to Day ${targetDay.day}`);
+}
+
+function communityTripItems() {
+  return (state.trip?.itinerary || []).flatMap(day => (day.items || []).filter(item => item.communityPostId));
+}
+
+async function replanCommunityPicks() {
+  const picks = communityTripItems();
+  if (!picks.length || state.isReplanningCommunity) return;
+  if (!state.user || !state.cloudConfigured || !navigator.onLine) {
+    toast("Connect your account and go online to fit picks with AI");
+    if (!state.user) showView("profileView");
+    return;
+  }
+
+  state.isReplanningCommunity = true;
+  renderItinerary();
+  try {
+    const existingPlan = (state.trip.itinerary || []).map(day => ({
+      day: day.day,
+      title: day.title,
+      items: (day.items || []).map(item => ({ time: item.time, name: item.name, note: item.note, cost: item.cost }))
+    }));
+    const request = `Revise my existing ${state.trip.days}-day itinerary for ${state.trip.destination}. Keep suitable existing activities, include every community pick, and place each on the most geographically and practically appropriate day and time. Keep the working budget at ${state.trip.budget}. Existing itinerary: ${JSON.stringify(existingPlan).slice(0, 950)}`;
+    const communityInsights = picks.map(item => ({
+      place: item.name,
+      rating: item.communityRating,
+      text: item.note,
+      audience: item.communityAudience
+    }));
+    const result = await requestAITrip({ request, profile: state.profile, communityInsights });
+    const originalRequest = state.trip.sourceRequest || request;
+    state.trip = normalizeAITrip(result, originalRequest);
+    scheduleSave();
+    renderAll();
+    showView("itineraryView");
+    toast("AI fitted your community picks into the trip");
+  } catch (error) {
+    console.error(error);
+    toast(error.message || "AI could not replan the trip");
+  } finally {
+    state.isReplanningCommunity = false;
+    renderItinerary();
+  }
 }
 
 function addMessage(text, type = "ai", pending = false) {
@@ -420,10 +514,11 @@ function renderItinerary() {
   const budget = Math.max(1, Number(state.trip.budget || 0));
   const budgetPercent = Math.min(100, Math.round((totals.planned / budget) * 100));
   content.innerHTML = `
-    <article class="trip-summary-card"><p class="eyebrow light">${state.trip.generatedBy === "openai" ? "AI-GENERATED DRAFT" : "WORKING ITINERARY"}</p><h2>${escapeHTML(state.trip.destination)}</h2><p>${state.trip.days} days · Purchases and live availability are not verified.</p><div class="trip-stats"><div class="trip-stat"><small>ACTIVITIES</small><strong>${totals.items}</strong></div><div class="trip-stat"><small>EST. PLAN</small><strong>$${totals.planned.toLocaleString("en-US")}</strong></div><div class="trip-stat"><small>BUDGET</small><strong>$${budget.toLocaleString("en-US")}</strong></div></div><div class="budget-bar" aria-label="${budgetPercent}% of working budget represented by listed activity estimates"><span style="width:${budgetPercent}%"></span></div></article>
+    <article class="trip-summary-card"><p class="eyebrow light">${state.trip.generatedBy === "openai" ? "AI-GENERATED DRAFT" : "WORKING ITINERARY"}</p><h2>${escapeHTML(state.trip.destination)}</h2><p>${state.trip.days} days · Purchases and live availability are not verified.</p><div class="trip-stats"><div class="trip-stat"><small>ACTIVITIES</small><strong>${totals.items}</strong></div><div class="trip-stat"><small>EST. PLAN</small><strong>${totals.planned.toLocaleString("en-US")}</strong></div><div class="trip-stat"><small>BUDGET</small><strong>${budget.toLocaleString("en-US")}</strong></div></div><div class="budget-bar" aria-label="${budgetPercent}% of working budget represented by listed activity estimates"><span style="width:${budgetPercent}%"></span></div></article>
+    ${communityTripItems().length ? `<aside class="community-replan-card"><div><span class="community-replan-icon" aria-hidden="true">✦</span><p><strong>${communityTripItems().length} community pick${communityTripItems().length === 1 ? "" : "s"} saved</strong><small>Let AI choose the best day and time while keeping your travel preferences.</small></p></div><button class="primary-button compact-button" type="button" data-replan-community ${state.isReplanningCommunity ? "disabled" : ""}>${state.isReplanningCommunity ? "Replanning…" : "Fit with AI"}</button></aside>` : ""}
     <div class="day-tabs">${state.trip.itinerary.map(day => `<button class="day-tab" data-scroll-day="${day.day}">Day ${day.day}</button>`).join("")}</div>
     ${state.trip.itinerary.map(day => `<section class="day-card" id="tripDay${day.day}"><p class="eyebrow">DAY ${day.day}</p><h3>${escapeHTML(day.title)}</h3>${(day.items || []).map((item, index) => `
-      <article class="timeline-item ${item.done ? "done" : ""}" data-item-id="${item.id}"><div class="timeline-time">${escapeHTML(item.time)}</div><div class="timeline-main"><strong>${escapeHTML(item.name)}</strong><p>${escapeHTML(item.note || item.category || "Flexible plan item")}</p></div><div class="timeline-actions"><button class="mini-button" data-trip-action="toggle" title="Mark complete">✓</button><button class="mini-button" data-trip-action="map" title="Open on map">⌖</button>${index > 0 ? '<button class="mini-button" data-trip-action="up" title="Move earlier">↑</button>' : ""}</div></article>
+      <article class="timeline-item ${item.done ? "done" : ""}" data-item-id="${item.id}"><div class="timeline-time">${escapeHTML(item.time)}</div><div class="timeline-main"><strong>${escapeHTML(item.name)}</strong>${item.communityPostId ? '<span class="community-source">Community pick</span>' : ""}<p>${escapeHTML(item.note || item.category || "Flexible plan item")}</p></div><div class="timeline-actions"><button class="mini-button" data-trip-action="toggle" title="Mark complete">✓</button><button class="mini-button" data-trip-action="map" title="Open on map">⌖</button>${index > 0 ? '<button class="mini-button" data-trip-action="up" title="Move earlier">↑</button>' : ""}</div></article>
     `).join("")}</section>`).join("")}
   `;
 }
@@ -634,6 +729,11 @@ document.getElementById("locateMeButton").addEventListener("click", () => {
 });
 
 document.getElementById("itineraryContent").addEventListener("click", event => {
+  const replanButton = event.target.closest("[data-replan-community]");
+  if (replanButton) {
+    replanCommunityPicks();
+    return;
+  }
   const dayButton = event.target.closest("[data-scroll-day]");
   if (dayButton) document.getElementById(`tripDay${dayButton.dataset.scrollDay}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   const action = event.target.closest("[data-trip-action]");
@@ -699,6 +799,12 @@ document.getElementById("communityList").addEventListener("click", async event =
   if (mapButton) {
     state.mapQuery = mapButton.dataset.communityMap;
     showView("exploreView");
+    return;
+  }
+  const saveButton = event.target.closest("[data-community-save]");
+  if (saveButton) {
+    const experience = communityExperienceById(saveButton.dataset.communitySave);
+    if (experience) addCommunityExperienceToTrip(experience);
     return;
   }
   const helpfulButton = event.target.closest("[data-community-helpful]");
