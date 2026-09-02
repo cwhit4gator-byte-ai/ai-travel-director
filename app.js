@@ -16,8 +16,8 @@ import {
   uploadExperiencePhotos,
   requestPhotoAnalysis,
   trackAppEvent
-} from "./firebase-client.js?v=13";
-import { renderGoogleMap, resolvePlaceCity } from "./maps.js?v=13";
+} from "./firebase-client.js?v=14";
+import { renderGoogleMap, resolvePlaceCity } from "./maps.js?v=14";
 
 const STORAGE_KEY = "aitd_v3_state";
 const ONBOARDING_KEY = "aitd_onboarding_v1";
@@ -333,22 +333,35 @@ async function resolveHotelCitiesFromItinerary() {
       let city = existing && existing.toLocaleLowerCase() !== fallback.toLocaleLowerCase() ? existing : "";
       if (!city) {
         try { city = await resolvePlaceCity(`${finalItem.name}, ${fallback}`); }
-        catch (error) { console.warn("Could not resolve final itinerary event", finalItem.name, error); }
+        catch (error) { console.warn("Could not resolve final itinerary event with Maps", finalItem.name, error); }
       }
       city ||= previousCity;
-      if (city) {
-        finalItem.location = city;
-        day.overnightLocation = city;
-        previousCity = city;
-      }
+      if (city) { finalItem.location = city; day.overnightLocation = city; previousCity = city; }
+    }
+    if (itineraryNeedsCityResolution() && state.user && state.cloudConfigured && navigator.onLine) {
+      const itinerarySnapshot = (state.trip.itinerary || []).map(day => ({ day: day.day, title: day.title, items: (day.items || []).filter(item => item.category !== "Hotel").map(item => ({ time: item.time, name: item.name, category: item.category })) }));
+      const enrichmentRequest = `Keep every itinerary day, event name, order, and time exactly as supplied. Add only the actual city or town location for every event. Set each day's overnightLocation to the city of its final event. Overall route: ${state.trip.destination}. Existing itinerary: ${JSON.stringify(itinerarySnapshot).slice(0, 6000)}`;
+      const result = await requestAITrip({ request: enrichmentRequest, profile: state.profile, communityInsights: [] });
+      const enriched = normalizeAITrip(result, state.trip.sourceRequest || enrichmentRequest);
+      (state.trip.itinerary || []).forEach((day, dayIndex) => {
+        const enrichedDay = enriched.itinerary?.[dayIndex];
+        if (!enrichedDay) return;
+        (day.items || []).filter(item => item.category !== "Hotel").forEach((item, itemIndex) => {
+          const location = enrichedDay.items?.[itemIndex]?.location;
+          if (location) item.location = location;
+        });
+        day.overnightLocation = enrichedDay.overnightLocation || day.overnightLocation;
+      });
+      state.trip.overnightLocations = [...new Set((state.trip.itinerary || []).map(day => day.overnightLocation).filter(Boolean))];
     }
     scheduleSave();
+  } catch (error) {
+    console.error("Could not enrich hotel cities", error);
   } finally {
     state.hotelLocationsResolving = false;
     renderHotels();
   }
 }
-
 function renderHotels() {
   const list = document.getElementById("hotelList");
   if (!list) return;
@@ -360,6 +373,15 @@ function renderHotels() {
     document.getElementById("overnightLocationSummary").textContent = "Hotel stops will appear automatically when the cities are ready.";
     list.innerHTML = `<div class="community-state"><span class="ai-pulse" aria-hidden="true">✦</span><strong>Matching itinerary events to cities…</strong></div>`;
     if (!state.hotelLocationsResolving) resolveHotelCitiesFromItinerary();
+    return;
+  }
+  if (itineraryNeedsCityResolution()) {
+    document.getElementById("overnightLocationSelect").innerHTML = "";
+    document.getElementById("overnightLocationSelect").disabled = true;
+    document.getElementById("hotelDestination").textContent = "City-level hotel stops are not ready";
+    document.getElementById("hotelIntroText").textContent = "The app could not safely determine the final city for each itinerary day.";
+    document.getElementById("overnightLocationSummary").textContent = "Retry to enrich this saved itinerary with the AI planner.";
+    list.innerHTML = `<div class="empty-state"><span class="empty-icon">⌖</span><h2>Update overnight cities</h2><p>Your itinerary is safe. Retry city matching without changing its events.</p><button class="primary-button" type="button" data-retry-hotel-cities>Retry city matching</button></div>`;
     return;
   }
   const stops = tripOvernightStops();
@@ -1002,6 +1024,8 @@ document.getElementById("placeList").addEventListener("click", event => { const 
 document.getElementById("overnightLocationSelect").addEventListener("change", event => { state.selectedOvernightLocation = event.target.value; renderHotels(); });
 document.querySelector(".hotel-toolbar").addEventListener("click", event => { const button = event.target.closest("[data-hotel-filter]"); if (!button) return; state.hotelFilter = button.dataset.hotelFilter; document.querySelectorAll("[data-hotel-filter]").forEach(item => item.classList.toggle("active", item === button)); renderHotels(); });
 document.getElementById("hotelList").addEventListener("click", event => {
+  const retryButton = event.target.closest("[data-retry-hotel-cities]");
+  if (retryButton) { state.hotelLocationsAttempted = false; resolveHotelCitiesFromItinerary(); return; }
   const mapButton = event.target.closest("[data-hotel-map]");
   if (mapButton) { state.mapQuery = `${mapButton.dataset.hotelMap} in ${selectedOvernightLocation()}`; showView("exploreView"); return; }
   const selectButton = event.target.closest("[data-hotel-select]");
@@ -1260,7 +1284,7 @@ window.addEventListener("online", updateConnectionState);
 window.addEventListener("offline", updateConnectionState);
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; installButton.hidden = false; trackAppEvent("pwa_install_prompt", { status: "available" }); });
 installButton.addEventListener("click", async () => { if (!deferredInstallPrompt) return toast("Use your browser menu to add this app to your home screen"); deferredInstallPrompt.prompt(); const choice = await deferredInstallPrompt.userChoice; trackAppEvent("pwa_install_result", { result: choice.outcome }); deferredInstallPrompt = null; installButton.hidden = true; });
-const APP_VERSION = "13";
+const APP_VERSION = "14";
 async function registerServiceWorker() {
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
