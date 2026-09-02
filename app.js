@@ -14,11 +14,14 @@ import {
   loadPublicTravelerProfile,
   requestAITrip,
   uploadExperiencePhotos,
-  requestPhotoAnalysis
-} from "./firebase-client.js?v=9";
-import { renderGoogleMap } from "./maps.js?v=9";
+  requestPhotoAnalysis,
+  trackAppEvent
+} from "./firebase-client.js?v=10";
+import { renderGoogleMap } from "./maps.js?v=10";
 
 const STORAGE_KEY = "aitd_v3_state";
+const ONBOARDING_KEY = "aitd_onboarding_v1";
+const returningVisitor = Boolean(localStorage.getItem(STORAGE_KEY));
 const defaultProfile = {
   name: "Chris",
   language: "English",
@@ -66,7 +69,8 @@ const state = {
   cloudConfigured: false,
   syncTimer: null,
   mapQuery: saved.mapQuery || "historic architecture",
-  currentView: "homeView"
+  currentView: "homeView",
+  onboardingStep: 0
 };
 
 const activityCatalog = [
@@ -133,6 +137,7 @@ function toast(message) {
 
 function showView(viewId) {
   state.currentView = viewId;
+  trackAppEvent("view_opened", { view_name: viewId.replace("View", "") });
   views.forEach(view => view.classList.toggle("active", view.id === viewId));
   navItems.forEach(item => item.classList.toggle("active", item.dataset.viewLink === viewId));
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -164,6 +169,10 @@ async function syncToCloud({ silent = false } = {}) {
     setCloudBanner("Cloud sync failed · Your device copy is still safe.", "error");
     if (!silent) toast("Cloud sync failed");
   }
+}
+
+function trackAppError(surface, error) {
+  trackAppEvent("app_error", { source: surface, status: error?.name || "error", online: navigator.onLine });
 }
 
 function normalizeInterests(value) {
@@ -790,8 +799,10 @@ document.getElementById("chatForm").addEventListener("submit", async event => {
   submit.disabled = true;
   const pending = addMessage("Building a route around your preferences…", "ai", true);
   try {
+    trackAppEvent("trip_plan_requested", { method: state.user && state.cloudConfigured && navigator.onLine ? "cloud_ai" : "local" });
     const result = await createTripFromRequest(text);
     state.trip = result.trip;
+    trackAppEvent("trip_created", { method: state.trip.generatedBy === "openai" ? "cloud_ai" : "local" });
     state.mapQuery = state.trip.destination;
     scheduleSave();
     pending.textContent = result.message;
@@ -799,18 +810,20 @@ document.getElementById("chatForm").addEventListener("submit", async event => {
     renderAll();
   } catch (error) {
     console.error(error);
+    trackAppError("trip_planner", error);
     pending.textContent = `I could not reach the secure AI service. ${error.message || "Please try again."}`;
     pending.classList.remove("pending");
   } finally { submit.disabled = false; }
 });
 
-document.getElementById("mapSearchForm").addEventListener("submit", event => { event.preventDefault(); const query = document.getElementById("mapSearchInput").value.trim(); if (query) updateMap(query); });
-document.querySelectorAll(".filter-chip").forEach(button => button.addEventListener("click", () => { document.querySelectorAll(".filter-chip").forEach(item => item.classList.remove("active")); button.classList.add("active"); updateMap(button.dataset.mapFilter); }));
+document.getElementById("mapSearchForm").addEventListener("submit", event => { event.preventDefault(); const query = document.getElementById("mapSearchInput").value.trim(); if (query) { trackAppEvent("map_search", { method: "typed" }); updateMap(query); } });
+document.querySelectorAll(".filter-chip").forEach(button => button.addEventListener("click", () => { document.querySelectorAll(".filter-chip").forEach(item => item.classList.remove("active")); button.classList.add("active"); trackAppEvent("map_search", { method: "category" }); updateMap(button.dataset.mapFilter); }));
 document.getElementById("placeList").addEventListener("click", event => { const button = event.target.closest("[data-add-place]"); if (button) addPlaceToTrip(button.dataset.addPlace, button.dataset.placeCategory, button.dataset.placeCost); });
 document.getElementById("communityMapList").addEventListener("click", event => { const button = event.target.closest("[data-map-community]"); if (button) { state.mapQuery = button.dataset.mapCommunity; updateMap(state.mapQuery); } });
 document.getElementById("locateMeButton").addEventListener("click", () => {
-  if (!navigator.geolocation) return toast("Location is unavailable in this browser");
-  navigator.geolocation.getCurrentPosition(position => updateMap(`${position.coords.latitude.toFixed(5)},${position.coords.longitude.toFixed(5)}`), () => toast("Location permission was not granted"), { enableHighAccuracy: true, timeout: 10000 });
+  trackAppEvent("location_permission_prompted", { source: "explore" });
+  if (!navigator.geolocation) { trackAppEvent("location_permission_result", { source: "explore", result: "unsupported" }); return toast("Location is unavailable in this browser"); }
+  navigator.geolocation.getCurrentPosition(position => { trackAppEvent("location_permission_result", { source: "explore", result: "granted" }); updateMap(`${position.coords.latitude.toFixed(5)},${position.coords.longitude.toFixed(5)}`); }, () => { trackAppEvent("location_permission_result", { source: "explore", result: "denied" }); toast("Location permission was not granted"); }, { enableHighAccuracy: true, timeout: 10000 });
 });
 
 document.getElementById("itineraryContent").addEventListener("click", event => {
@@ -875,6 +888,7 @@ document.getElementById("profileForm").addEventListener("submit", async event =>
   }
   hydrateProfileForm();
   renderRecommendations();
+  trackAppEvent("profile_saved", { status: state.profile.publicProfileVisible ? "public" : "private" });
   toast(state.profile.publicProfileVisible ? "Profile saved and community profile updated" : "Private profile saved");
   showView("homeView");
 });
@@ -882,8 +896,11 @@ document.getElementById("syncButton").addEventListener("click", () => syncToClou
 
 document.getElementById("authButton").addEventListener("click", async () => {
   if (!state.cloudConfigured) return toast("Firebase configuration is needed before cloud sign-in");
-  try { if (state.user) await signOutUser(); else await signInGoogle(); }
-  catch (error) { console.error(error); toast(error.message || "Cloud sign-in could not be completed"); }
+  try {
+    if (state.user) { await signOutUser(); trackAppEvent("sign_out", { method: "google" }); }
+    else { await signInGoogle(); trackAppEvent("sign_in", { method: "google" }); }
+  }
+  catch (error) { console.error(error); trackAppError("authentication", error); toast(error.message || "Cloud sign-in could not be completed"); }
 });
 
 document.getElementById("experiencePhotos").addEventListener("change", event => {
@@ -899,6 +916,7 @@ document.getElementById("communityList").addEventListener("click", async event =
   }
   const mapButton = event.target.closest("[data-community-map]");
   if (mapButton) {
+    trackAppEvent("community_viewed_on_map", { source: "community" });
     state.mapQuery = mapButton.dataset.communityMap;
     showView("exploreView");
     return;
@@ -906,11 +924,11 @@ document.getElementById("communityList").addEventListener("click", async event =
   const saveButton = event.target.closest("[data-community-save]");
   if (saveButton) {
     const experience = communityExperienceById(saveButton.dataset.communitySave);
-    if (experience) addCommunityExperienceToTrip(experience);
+    if (experience) { trackAppEvent("community_added_to_trip", { source: "community" }); addCommunityExperienceToTrip(experience); }
     return;
   }
   const collectionButton = event.target.closest("[data-save-collection]");
-  if (collectionButton) { openCollectionDialog(collectionButton.dataset.saveCollection); return; }
+  if (collectionButton) { trackAppEvent("community_saved", { source: "community" }); openCollectionDialog(collectionButton.dataset.saveCollection); return; }
   const profileButton = event.target.closest("[data-traveler-profile]");
   if (profileButton) { openTravelerProfile(profileButton.dataset.travelerProfile); return; }
   const helpfulButton = event.target.closest("[data-community-helpful]");
@@ -1050,9 +1068,9 @@ const connectionBanner = document.getElementById("connectionBanner");
 function updateConnectionState() { connectionBanner.hidden = navigator.onLine; }
 window.addEventListener("online", updateConnectionState);
 window.addEventListener("offline", updateConnectionState);
-window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; installButton.hidden = false; });
-installButton.addEventListener("click", async () => { if (!deferredInstallPrompt) return toast("Use your browser menu to add this app to your home screen"); deferredInstallPrompt.prompt(); await deferredInstallPrompt.userChoice; deferredInstallPrompt = null; installButton.hidden = true; });
-const APP_VERSION = "9";
+window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; installButton.hidden = false; trackAppEvent("pwa_install_prompt", { status: "available" }); });
+installButton.addEventListener("click", async () => { if (!deferredInstallPrompt) return toast("Use your browser menu to add this app to your home screen"); deferredInstallPrompt.prompt(); const choice = await deferredInstallPrompt.userChoice; trackAppEvent("pwa_install_result", { result: choice.outcome }); deferredInstallPrompt = null; installButton.hidden = true; });
+const APP_VERSION = "10";
 async function registerServiceWorker() {
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
@@ -1072,6 +1090,33 @@ async function registerServiceWorker() {
 }
 if ("serviceWorker" in navigator) window.addEventListener("load", registerServiceWorker);
 
+
+const onboardingDialog = document.getElementById("onboardingDialog");
+const onboardingSteps = [...document.querySelectorAll("[data-onboarding-step]")];
+const onboardingBack = document.getElementById("onboardingBack");
+const onboardingNext = document.getElementById("onboardingNext");
+const onboardingProgress = document.getElementById("onboardingProgress");
+
+function renderOnboardingStep() {
+  onboardingSteps.forEach((step, index) => { step.hidden = index !== state.onboardingStep; });
+  onboardingBack.hidden = state.onboardingStep === 0;
+  onboardingNext.textContent = state.onboardingStep === onboardingSteps.length - 1 ? "Start exploring" : "Next";
+  onboardingProgress.textContent = `Step ${state.onboardingStep + 1} of ${onboardingSteps.length}`;
+}
+
+function finishOnboarding(result) {
+  localStorage.setItem(ONBOARDING_KEY, result);
+  trackAppEvent(result === "completed" ? "onboarding_completed" : "onboarding_skipped", { step: state.onboardingStep + 1 });
+  onboardingDialog.close();
+}
+
+onboardingBack.addEventListener("click", () => { state.onboardingStep = Math.max(0, state.onboardingStep - 1); renderOnboardingStep(); });
+onboardingNext.addEventListener("click", () => {
+  if (state.onboardingStep < onboardingSteps.length - 1) { state.onboardingStep += 1; renderOnboardingStep(); return; }
+  finishOnboarding("completed");
+});
+document.getElementById("onboardingSkip").addEventListener("click", () => finishOnboarding("skipped"));
+
 async function initializeApp() {
   hydrateProfileForm();
   renderAll();
@@ -1079,6 +1124,7 @@ async function initializeApp() {
   try {
     const cloud = await initializeCloud();
     state.cloudConfigured = cloud.configured;
+    trackAppEvent("app_open", { returning: returningVisitor, display_mode: window.matchMedia("(display-mode: standalone)").matches ? "standalone" : "browser", online: navigator.onLine });
     if (cloud.configured) {
       observeAuth(handleAuthenticatedUser);
       await refreshCommunityFeed({ reset: true });
@@ -1086,7 +1132,14 @@ async function initializeApp() {
     else handleAuthenticatedUser(null);
   } catch (error) {
     console.error(error);
+    trackAppError("app_startup", error);
     setCloudBanner("Cloud setup could not start · Local travel mode remains available.", "error");
+  }
+  if (!localStorage.getItem(ONBOARDING_KEY)) {
+    state.onboardingStep = 0;
+    renderOnboardingStep();
+    onboardingDialog.showModal();
+    trackAppEvent("onboarding_started", { step: 1 });
   }
 }
 

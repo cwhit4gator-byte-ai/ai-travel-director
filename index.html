@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b1830" />
   <meta name="description" content="AI-first travel planning, live itineraries, maps, traveler insights, and safety tools." />
   <title>AI Travel Director</title>
-  <link rel="manifest" href="manifest.json?v=9" />
+  <link rel="manifest" href="manifest.json?v=10" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=9" />
+  <link rel="stylesheet" href="styles.css?v=10" />
 </head>
 <body>
   <div class="app-shell">
@@ -277,7 +277,39 @@
     </div>
   </dialog>
 
+
+  <dialog id="onboardingDialog" class="onboarding-dialog" aria-labelledby="onboardingTitle">
+    <div class="onboarding-shell">
+      <div class="onboarding-topline">
+        <span class="brand-mark" aria-hidden="true">✦</span>
+        <button id="onboardingSkip" class="text-button" type="button">Skip tour</button>
+      </div>
+      <section class="onboarding-step" data-onboarding-step>
+        <p class="eyebrow">WELCOME TO AI TRAVEL DIRECTOR</p>
+        <h2 id="onboardingTitle">Plan around what matters to you</h2>
+        <p>Tell the AI where you want to go, your timing, budget, pace, and interests. You stay in control—nothing is booked automatically.</p>
+        <div class="onboarding-visual" aria-hidden="true"><span>✦</span><strong>Plan</strong><small>Personal itinerary</small></div>
+      </section>
+      <section class="onboarding-step" data-onboarding-step hidden>
+        <p class="eyebrow">EXPLORE WITH CONFIDENCE</p>
+        <h2>See the route and learn from travelers</h2>
+        <p>Search the interactive map, open Community insights, and add useful recommendations directly to your trip.</p>
+        <div class="onboarding-visual" aria-hidden="true"><span>⌖</span><strong>Explore</strong><small>Maps + community</small></div>
+      </section>
+      <section class="onboarding-step" data-onboarding-step hidden>
+        <p class="eyebrow">KEEP THE GOOD IDEAS</p>
+        <h2>Save places your way</h2>
+        <p>Create private collections, personalize your traveler profile, and sync your plans across devices when you connect your account.</p>
+        <div class="onboarding-visual" aria-hidden="true"><span>☆</span><strong>Save</strong><small>Private collections</small></div>
+      </section>
+      <div class="onboarding-footer">
+        <span id="onboardingProgress" aria-live="polite">Step 1 of 3</span>
+        <div><button id="onboardingBack" class="quiet-button" type="button" hidden>Back</button><button id="onboardingNext" class="primary-button" type="button">Next</button></div>
+      </div>
+    </div>
+  </dialog>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="app.js?v=9"></script>
+  <script type="module" src="app.js?v=10"></script>
 </body>
 </html>
