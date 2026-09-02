@@ -1,15 +1,19 @@
-import { firebaseConfig, functionsRegion } from "./firebase-config.js";
-
-const configured = Boolean(
-  firebaseConfig.apiKey &&
-  !firebaseConfig.apiKey.startsWith("REPLACE_") &&
-  firebaseConfig.projectId &&
-  !firebaseConfig.projectId.startsWith("REPLACE_")
-);
+import { loadFirebaseConfig, functionsRegion } from "./firebase-config.js";
 
 let services = null;
+let initializationPromise = null;
 
 export async function initializeCloud() {
+  if (services) return { configured: true, auth: services.auth };
+  if (initializationPromise) return initializationPromise;
+
+  initializationPromise = initializeServices();
+  return initializationPromise;
+}
+
+async function initializeServices() {
+  const firebaseConfig = await loadFirebaseConfig();
+  const configured = Boolean(firebaseConfig?.apiKey && firebaseConfig?.projectId && firebaseConfig?.appId);
   if (!configured) return { configured: false };
 
   const [appModule, authModule, firestoreModule, functionsModule, storageModule] = await Promise.all([
@@ -20,7 +24,7 @@ export async function initializeCloud() {
     import("https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js")
   ]);
 
-  const app = appModule.initializeApp(firebaseConfig);
+  const app = appModule.getApps().length ? appModule.getApp() : appModule.initializeApp(firebaseConfig);
   services = {
     auth: authModule.getAuth(app),
     db: firestoreModule.getFirestore(app),
