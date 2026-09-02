@@ -179,6 +179,29 @@ export async function reportCommunityExperience(postId, uid, reason = "User repo
   });
 }
 
+export async function savePublicTravelerProfile(uid, profile) {
+  if (!services || !uid) throw new Error("Sign in before publishing a traveler profile.");
+  const payload = {
+    ownerId: uid,
+    displayName: String(profile.displayName || "Traveler").trim().slice(0, 100),
+    photoURL: String(profile.photoURL || "").trim().slice(0, 2000),
+    bio: String(profile.bio || "").trim().slice(0, 300),
+    homeBase: String(profile.homeBase || "").trim().slice(0, 100),
+    travelStyle: String(profile.travelStyle || "").trim().slice(0, 120),
+    interests: String(profile.interests || "").trim().slice(0, 300),
+    visible: Boolean(profile.visible),
+    updatedAt: services.serverTimestamp()
+  };
+  await services.setDoc(services.doc(services.db, "publicTravelerProfiles", uid), payload, { merge: true });
+  return { ...payload, updatedAt: new Date().toISOString() };
+}
+
+export async function loadPublicTravelerProfile(uid) {
+  if (!services || !uid) return null;
+  const snapshot = await services.getDoc(services.doc(services.db, "publicTravelerProfiles", uid));
+  return snapshot.exists() ? { ...snapshot.data(), id: snapshot.id } : null;
+}
+
 export async function requestPhotoAnalysis(photoURL) {
   if (!services) throw new Error("Cloud photo analysis is not configured.");
   const result = await services.httpsCallable(services.functions, "analyzeExperiencePhoto")({ photoURL });

@@ -10,6 +10,8 @@ import {
   loadCommunityActions,
   setCommunityHelpful,
   reportCommunityExperience,
+  savePublicTravelerProfile,
+  loadPublicTravelerProfile,
   requestAITrip,
   uploadExperiencePhotos,
   requestPhotoAnalysis
@@ -26,7 +28,11 @@ const defaultProfile = {
   pace: "balanced",
   diet: "No alcohol",
   walking: 20,
-  aiPreference: "Suggestions only"
+  aiPreference: "Suggestions only",
+  publicProfileVisible: true,
+  publicHomeBase: "",
+  publicTravelStyle: "",
+  publicBio: ""
 };
 
 const defaultExperiences = [
@@ -37,7 +43,8 @@ const defaultExperiences = [
 const saved = readJSON(STORAGE_KEY, null) || {
   profile: readJSON("aitd_profile", {}),
   trip: readJSON("aitd_trip", null),
-  experiences: readJSON("aitd_experiences", null)
+  experiences: readJSON("aitd_experiences", null),
+  collections: []
 };
 const state = {
   profile: { ...defaultProfile, ...(saved.profile || {}) },
@@ -52,6 +59,8 @@ const state = {
   communityAudience: "All travelers",
   helpfulIds: new Set(),
   reportedIds: new Set(),
+  collections: Array.isArray(saved.collections) ? saved.collections : [],
+  activeCollectionPostId: "",
   isReplanningCommunity: false,
   user: null,
   cloudConfigured: false,
@@ -93,7 +102,7 @@ function safeImageURL(value) {
 }
 
 function saveLocalState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ profile: state.profile, trip: state.trip, experiences: state.experiences, mapQuery: state.mapQuery }));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ profile: state.profile, trip: state.trip, experiences: state.experiences, collections: state.collections, mapQuery: state.mapQuery }));
 }
 
 function cloudPayload() {
@@ -103,7 +112,8 @@ function cloudPayload() {
     photoURL: state.user?.photoURL || "",
     profile: state.profile,
     trip: state.trip,
-    experiences: state.experiences
+    experiences: state.experiences,
+    collections: state.collections
   };
 }
 
@@ -128,6 +138,7 @@ function showView(viewId) {
   window.scrollTo({ top: 0, behavior: "smooth" });
   if (viewId === "plannerView") initializeChat();
   if (viewId === "itineraryView") renderItinerary();
+  if (viewId === "collectionsView") renderCollections();
   if (viewId === "exploreView") renderMap();
 }
 
@@ -163,6 +174,9 @@ function renderHome() {
   const title = document.getElementById("homeHeading");
   const summary = document.getElementById("tripSummary");
   const metric = document.getElementById("homeTripMetric");
+  const collectionsMetric = document.getElementById("homeCollectionsMetric");
+  const savedCount = state.collections.reduce((total, collection) => total + (collection.items || []).length, 0);
+  if (collectionsMetric) collectionsMetric.textContent = savedCount ? `${savedCount} saved place${savedCount === 1 ? "" : "s"}` : "Nothing saved yet";
   if (state.trip) {
     title.textContent = state.trip.destination;
     summary.textContent = `${state.trip.days}-day working itinerary · $${Number(state.trip.budget || 0).toLocaleString("en-US")} budget · no bookings made`;
@@ -215,6 +229,7 @@ function renderCommunity() {
     const helpful = state.helpfulIds.has(String(item.id));
     const reported = state.reportedIds.has(String(item.id));
     const savedInTrip = Boolean(state.trip?.itinerary?.some(day => (day.items || []).some(tripItem => String(tripItem.communityPostId || "") === String(item.id))));
+    const savedInCollection = state.collections.some(collection => (collection.items || []).some(savedItem => String(savedItem.postId) === String(item.id)));
     const createdDate = item.createdAt ? new Date(item.createdAt) : null;
     const dateLabel = createdDate && !Number.isNaN(createdDate.valueOf()) ? createdDate.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Recent insight";
     const gallery = photos.length ? `
@@ -231,12 +246,13 @@ function renderCommunity() {
         ${gallery}
         <div class="community-card-copy">
           <h3>${escapeHTML(item.place)} · ${"★".repeat(Math.max(1, Number(item.rating) || 1))}</h3>
-          <div class="community-byline"><span>${escapeHTML(item.authorName || (item.anonymous ? "Anonymous traveler" : "Traveler"))}</span><span aria-hidden="true">·</span><time>${escapeHTML(dateLabel)}</time></div>
+          <div class="community-byline">${!item.anonymous && item.ownerId ? `<button class="traveler-profile-link" type="button" data-traveler-profile="${escapeHTML(item.id)}">${escapeHTML(item.authorName || "Traveler")}</button>` : `<span>${escapeHTML(item.authorName || "Anonymous traveler")}</span>`}<span aria-hidden="true">·</span><time>${escapeHTML(dateLabel)}</time></div>
           <p>${escapeHTML(item.text)}</p>
           <div class="tag-row"><span class="tag">${escapeHTML(item.audience)}</span><span class="tag">Traveler-reported</span></div>
           <div class="community-actions">
             <button class="insight-action primary-insight-action${savedInTrip ? " selected" : ""}" type="button" data-community-save="${escapeHTML(item.id)}" ${savedInTrip ? "disabled" : ""}>${savedInTrip ? "✓ In your trip" : state.trip ? "＋ Add to trip" : "✦ Plan with this"}</button>
-            <button class="insight-action${helpful ? " selected" : ""}" type="button" data-community-helpful="${escapeHTML(item.id)}" aria-pressed="${helpful}" ${item.isShared ? "" : "disabled"}>${helpful ? "✓ Helpful" : "♡ Helpful"}</button>
+            <button class="insight-action${savedInCollection ? " selected" : ""}" type="button" data-save-collection="${escapeHTML(item.id)}">${savedInCollection ? "★ Saved" : "☆ Save"}</button>
+            <button class="insight-action${helpful ? " selected" : ""} type="button" data-community-helpful="${escapeHTML(item.id)}" aria-pressed="${helpful}" ${item.isShared ? "" : "disabled"}>${helpful ? "✓ Helpful" : "♡ Helpful"}</button>
             <button class="insight-action" type="button" data-community-map="${escapeHTML(item.place)}">⌖ View on map</button>
             <button class="insight-action report" type="button" data-community-report="${escapeHTML(item.id)}" ${!item.isShared || reported ? "disabled" : ""}>${reported ? "Reported" : "Report"}</button>
           </div>
@@ -251,6 +267,71 @@ function renderCommunity() {
   document.getElementById("communityResultSummary").textContent = state.communityLoaded
     ? `${items.length} shared insight${items.length === 1 ? "" : "s"}${state.communityHasMore ? " loaded" : ""}`
     : "Showing saved examples until the shared feed connects";
+}
+
+function collectionById(collectionId) {
+  return state.collections.find(collection => String(collection.id) === String(collectionId));
+}
+
+function openCollectionDialog(experienceId = "") {
+  state.activeCollectionPostId = String(experienceId || "");
+  const experience = experienceId ? communityExperienceById(experienceId) : null;
+  const dialog = document.getElementById("collectionDialog");
+  document.getElementById("collectionDialogTitle").textContent = experience ? "Choose a collection" : "Create a collection";
+  document.getElementById("collectionDialogPlace").textContent = experience ? experience.place : "Create a private list for places you want to remember.";
+  const select = document.getElementById("collectionSelect");
+  select.innerHTML = state.collections.length ? state.collections.map(collection => `<option value="${escapeHTML(collection.id)}">${escapeHTML(collection.name)} · ${(collection.items || []).length}</option>`).join("") : '<option value="">Saved places</option>';
+  document.getElementById("existingCollectionLabel").hidden = !experience || !state.collections.length;
+  document.getElementById("newCollectionName").value = "";
+  if (!dialog.open) dialog.showModal();
+}
+
+function savedCommunitySnapshot(experience) {
+  const photos = (Array.isArray(experience.photoURLs) ? experience.photoURLs : []).map(safeImageURL).filter(Boolean);
+  return { postId: String(experience.id), place: String(experience.place || "Travel recommendation"), text: String(experience.text || ""), rating: Math.max(1, Number(experience.rating) || 1), audience: String(experience.audience || "Everyone"), authorName: String(experience.authorName || (experience.anonymous ? "Anonymous traveler" : "Traveler")), ownerId: experience.anonymous ? "" : String(experience.ownerId || ""), photoURL: photos[0] || experience.photoURL || "", savedAt: new Date().toISOString() };
+}
+
+function renderCollections() {
+  const list = document.getElementById("collectionsList");
+  if (!list) return;
+  if (!state.collections.length) {
+    list.innerHTML = '<div class="empty-state"><span class="empty-icon">☆</span><h2>No collections yet</h2><p>Save a Community insight or create a collection for a future trip.</p><button class="primary-button" type="button" data-create-collection>Create a collection</button></div>';
+    return;
+  }
+  list.innerHTML = state.collections.map(collection => `
+    <section class="collection-card">
+      <div class="collection-heading"><div><p class="eyebrow">PRIVATE COLLECTION</p><h2>${escapeHTML(collection.name)}</h2></div><span>${(collection.items || []).length} place${(collection.items || []).length === 1 ? "" : "s"}</span></div>
+      ${(collection.items || []).length ? `<div class="collection-items">${collection.items.map(item => `
+        <article class="collection-item">
+          ${safeImageURL(item.photoURL) ? `<img src="${escapeHTML(safeImageURL(item.photoURL))}" alt="" loading="lazy" />` : '<span class="collection-placeholder" aria-hidden="true">⌖</span>'}
+          <div><strong>${escapeHTML(item.place)}</strong><small>${escapeHTML(item.authorName)} · ${"★".repeat(item.rating)}</small><p>${escapeHTML(item.text)}</p></div>
+          <div class="collection-item-actions"><button class="mini-button" type="button" data-collection-trip="${escapeHTML(item.postId)}" data-collection-id="${escapeHTML(collection.id)}" title="Add to trip">＋</button><button class="mini-button" type="button" data-collection-map="${escapeHTML(item.place)}" title="View on map">⌖</button><button class="mini-button danger-text" type="button" data-collection-remove="${escapeHTML(item.postId)}" data-collection-id="${escapeHTML(collection.id)}" title="Remove from collection">×</button></div>
+        </article>`).join("")}</div>` : '<p class="collection-empty">This collection is ready for your first saved place.</p>'}
+    </section>
+  `).join("");
+}
+
+async function openTravelerProfile(experienceId) {
+  const experience = communityExperienceById(experienceId);
+  if (!experience || experience.anonymous || !experience.ownerId) return;
+  const dialog = document.getElementById("travelerProfileDialog");
+  const content = document.getElementById("travelerProfileContent");
+  content.innerHTML = '<div class="community-state"><span class="ai-pulse" aria-hidden="true">✦</span><strong>Loading traveler profile…</strong></div>';
+  if (!dialog.open) dialog.showModal();
+  let profile = null;
+  try { profile = await loadPublicTravelerProfile(String(experience.ownerId)); } catch (error) { console.info("Public traveler profile is not available.", error); }
+  const recentInsights = communityItems().filter(item => !item.anonymous && String(item.ownerId || "") === String(experience.ownerId)).slice(0, 4);
+  const displayName = profile?.displayName || experience.authorName || "Traveler";
+  const photoURL = safeImageURL(profile?.photoURL);
+  const initials = displayName.split(/\s+/).map(part => part[0]).join("").slice(0, 2).toUpperCase();
+  content.innerHTML = `
+    <header class="traveler-profile-header">
+      ${photoURL ? `<img src="${escapeHTML(photoURL)}" alt="" />` : `<span class="traveler-profile-avatar">${escapeHTML(initials || "T")}</span>`}
+      <div><p class="eyebrow">TRAVELER PROFILE</p><h2 id="travelerProfileName">${escapeHTML(displayName)}</h2><p>${escapeHTML(profile?.travelStyle || "Community contributor")}</p></div>
+    </header>
+    ${profile ? `<div class="traveler-profile-details">${profile.homeBase ? `<span>⌖ ${escapeHTML(profile.homeBase)}</span>` : ""}${profile.interests ? `<span>✦ ${escapeHTML(profile.interests)}</span>` : ""}</div><p class="traveler-profile-bio">${escapeHTML(profile.bio || "This traveler has not added a public bio yet.")}</p>` : '<p class="profile-private-note">This traveler keeps their profile private. Their non-anonymous Community insights are still shown below.</p>'}
+    <div class="profile-insights"><p class="eyebrow">RECENT INSIGHTS</p>${recentInsights.map(item => `<button type="button" data-profile-map="${escapeHTML(item.place)}"><strong>${escapeHTML(item.place)}</strong><span>${escapeHTML(item.text)}</span></button>`).join("") || "<p>No recent insights are loaded.</p>"}</div>
+  `;
 }
 
 async function hydrateCommunityActions(items = state.communityPosts) {
@@ -621,9 +702,10 @@ function addPlaceToTrip(name, category, cost) {
 }
 
 function hydrateProfileForm() {
-  const fields = { profileName: state.profile.name, profileLanguage: state.profile.language, profileInterests: normalizeInterests(state.profile.interests), profileBudget: state.profile.budget, profilePace: state.profile.pace, profileDiet: state.profile.diet, profileWalking: state.profile.walking };
+  const fields = { profileName: state.profile.name, profileLanguage: state.profile.language, profileInterests: normalizeInterests(state.profile.interests), profileBudget: state.profile.budget, profilePace: state.profile.pace, profileDiet: state.profile.diet, profileWalking: state.profile.walking, publicHomeBase: state.profile.publicHomeBase, publicTravelStyle: state.profile.publicTravelStyle, publicBio: state.profile.publicBio };
   Object.entries(fields).forEach(([id, value]) => { const element = document.getElementById(id); if (element) element.value = value ?? ""; });
   document.querySelectorAll(".travelStyle").forEach(input => { input.checked = (state.profile.travelStyles || []).includes(input.value); });
+  document.getElementById("publicProfilePrivate").checked = !state.profile.publicProfileVisible;
   document.getElementById("aiPreference").value = state.profile.aiPreference;
   document.querySelectorAll(".ai-choice").forEach(button => button.classList.toggle("selected", button.dataset.value === state.profile.aiPreference));
   updateAccountUI();
@@ -656,6 +738,7 @@ async function handleAuthenticatedUser(user) {
       state.profile = { ...defaultProfile, ...(cloud.profile || {}) };
       state.trip = cloud.trip ?? state.trip;
       if (Array.isArray(cloud.experiences)) state.experiences = cloud.experiences;
+      if (Array.isArray(cloud.collections)) state.collections = cloud.collections;
       saveLocalState();
       hydrateProfileForm();
       renderAll();
@@ -681,6 +764,7 @@ function renderAll() {
   renderRecommendations();
   renderCommunity();
   renderItinerary();
+  renderCollections();
 }
 
 bindViewLinks();
@@ -756,7 +840,7 @@ document.querySelectorAll(".ai-choice").forEach(button => button.addEventListene
   document.getElementById("aiPreference").value = button.dataset.value;
 }));
 
-document.getElementById("profileForm").addEventListener("submit", event => {
+document.getElementById("profileForm").addEventListener("submit", async event => {
   event.preventDefault();
   state.profile = {
     ...state.profile,
@@ -768,12 +852,29 @@ document.getElementById("profileForm").addEventListener("submit", event => {
     pace: document.getElementById("profilePace").value,
     diet: document.getElementById("profileDiet").value.trim(),
     walking: Number(document.getElementById("profileWalking").value || 20),
-    aiPreference: document.getElementById("aiPreference").value || "Suggestions only"
+    aiPreference: document.getElementById("aiPreference").value || "Suggestions only",
+    publicProfileVisible: !document.getElementById("publicProfilePrivate").checked,
+    publicHomeBase: document.getElementById("publicHomeBase").value.trim(),
+    publicTravelStyle: document.getElementById("publicTravelStyle").value.trim(),
+    publicBio: document.getElementById("publicBio").value.trim()
   };
   scheduleSave();
+  if (state.user && state.cloudConfigured) {
+    try {
+      await savePublicTravelerProfile(state.user.uid, { displayName: state.profile.name || state.user.displayName || "Traveler", photoURL: state.user.photoURL || "", bio: state.profile.publicBio, homeBase: state.profile.publicHomeBase, travelStyle: state.profile.publicTravelStyle, interests: normalizeInterests(state.profile.interests), visible: state.profile.publicProfileVisible });
+    } catch (error) {
+      console.error(error);
+      toast("Your private profile saved, but the community profile could not update");
+      return;
+    }
+  } else if (state.profile.publicProfileVisible) {
+    toast("Connect your account to publish your traveler profile");
+    hydrateProfileForm();
+    return;
+  }
   hydrateProfileForm();
   renderRecommendations();
-  toast("Profile saved");
+  toast(state.profile.publicProfileVisible ? "Profile saved and community profile updated" : "Private profile saved");
   showView("homeView");
 });
 document.getElementById("syncButton").addEventListener("click", () => syncToCloud({ silent: false }));
@@ -807,6 +908,10 @@ document.getElementById("communityList").addEventListener("click", async event =
     if (experience) addCommunityExperienceToTrip(experience);
     return;
   }
+  const collectionButton = event.target.closest("[data-save-collection]");
+  if (collectionButton) { openCollectionDialog(collectionButton.dataset.saveCollection); return; }
+  const profileButton = event.target.closest("[data-traveler-profile]");
+  if (profileButton) { openTravelerProfile(profileButton.dataset.travelerProfile); return; }
   const helpfulButton = event.target.closest("[data-community-helpful]");
   const reportButton = event.target.closest("[data-community-report]");
   if (!helpfulButton && !reportButton) return;
@@ -837,6 +942,42 @@ document.getElementById("communityList").addEventListener("click", async event =
     actionButton.disabled = false;
   }
 });
+const collectionDialog = document.getElementById("collectionDialog");
+document.getElementById("newCollectionButton").addEventListener("click", () => openCollectionDialog());
+document.getElementById("closeCollectionDialog").addEventListener("click", () => collectionDialog.close());
+document.getElementById("collectionForm").addEventListener("submit", event => {
+  event.preventDefault();
+  const newName = document.getElementById("newCollectionName").value.trim();
+  let collection = newName ? null : collectionById(document.getElementById("collectionSelect").value);
+  if (!collection) { collection = { id: crypto.randomUUID(), name: newName || "Saved places", createdAt: new Date().toISOString(), items: [] }; state.collections.unshift(collection); }
+  const experience = state.activeCollectionPostId ? communityExperienceById(state.activeCollectionPostId) : null;
+  if (experience && !(collection.items || []).some(item => String(item.postId) === String(experience.id))) collection.items = [...(collection.items || []), savedCommunitySnapshot(experience)];
+  scheduleSave(); renderAll(); collectionDialog.close(); toast(experience ? `Saved to ${collection.name}` : `${collection.name} created`);
+});
+document.getElementById("collectionsList").addEventListener("click", event => {
+  if (event.target.closest("[data-create-collection]")) return openCollectionDialog();
+  const mapButton = event.target.closest("[data-collection-map]");
+  if (mapButton) { state.mapQuery = mapButton.dataset.collectionMap; showView("exploreView"); return; }
+  const tripButton = event.target.closest("[data-collection-trip]");
+  if (tripButton) {
+    const collection = collectionById(tripButton.dataset.collectionId);
+    const item = (collection?.items || []).find(savedItem => String(savedItem.postId) === String(tripButton.dataset.collectionTrip));
+    if (item) addCommunityExperienceToTrip({ ...item, id: item.postId });
+    return;
+  }
+  const removeButton = event.target.closest("[data-collection-remove]");
+  if (removeButton) {
+    const collection = collectionById(removeButton.dataset.collectionId);
+    if (collection) collection.items = (collection.items || []).filter(item => String(item.postId) !== String(removeButton.dataset.collectionRemove));
+    scheduleSave(); renderAll(); toast("Removed from collection");
+  }
+});
+document.getElementById("closeTravelerProfile").addEventListener("click", () => document.getElementById("travelerProfileDialog").close());
+document.getElementById("travelerProfileContent").addEventListener("click", event => {
+  const button = event.target.closest("[data-profile-map]");
+  if (button) { document.getElementById("travelerProfileDialog").close(); state.mapQuery = button.dataset.profileMap; showView("exploreView"); }
+});
+
 document.getElementById("closeCommunityPhoto").addEventListener("click", () => communityPhotoDialog.close());
 document.getElementById("previousCommunityPhoto").addEventListener("click", () => moveCommunityPhoto(-1));
 document.getElementById("nextCommunityPhoto").addEventListener("click", () => moveCommunityPhoto(1));

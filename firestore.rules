@@ -83,5 +83,35 @@ service cloud.firestore {
           && request.resource.data.createdAt == request.time;
       }
     }
+    match /publicTravelerProfiles/{userId} {
+      function owner() {
+        return request.auth != null && request.auth.uid == userId;
+      }
+      function validPublicProfile() {
+        return request.resource.data.keys().hasOnly([
+          'ownerId', 'displayName', 'photoURL', 'bio', 'homeBase',
+          'travelStyle', 'interests', 'visible', 'updatedAt'
+        ])
+        && request.resource.data.ownerId == userId
+        && request.resource.data.displayName is string
+        && request.resource.data.displayName.size() > 0
+        && request.resource.data.displayName.size() <= 100
+        && request.resource.data.photoURL is string
+        && request.resource.data.photoURL.size() <= 2000
+        && request.resource.data.bio is string
+        && request.resource.data.bio.size() <= 300
+        && request.resource.data.homeBase is string
+        && request.resource.data.homeBase.size() <= 100
+        && request.resource.data.travelStyle is string
+        && request.resource.data.travelStyle.size() <= 120
+        && request.resource.data.interests is string
+        && request.resource.data.interests.size() <= 300
+        && request.resource.data.visible is bool
+        && request.resource.data.updatedAt == request.time;
+      }
+      allow read: if resource.data.visible == true || owner();
+      allow create, update: if owner() && validPublicProfile();
+      allow delete: if owner();
+    }
   }
 }
