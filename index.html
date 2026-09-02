@@ -1,9 +1,10 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#152238" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1830" />
+  <meta name="description" content="AI-first travel planning, live itineraries, maps, traveler insights, and safety tools." />
   <title>AI Travel Director</title>
   <link rel="manifest" href="manifest.json" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
@@ -12,209 +13,195 @@
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <div>
-        <p class="eyebrow">PERSONAL TRAVEL ASSISTANT</p>
-        <h1>AI Travel Director</h1>
-      </div>
+      <button class="brand" data-view-link="homeView" aria-label="Go home">
+        <span class="brand-mark" aria-hidden="true">✦</span>
+        <span><small>AI TRAVEL</small><strong>Director</strong></span>
+      </button>
       <div class="top-actions">
-        <button id="installButton" class="install-button" hidden>Install app</button>
-        <button id="profileButton" class="icon-button" aria-label="Open traveler profile">⚙️</button>
+        <button id="installButton" class="quiet-button" hidden>Install</button>
+        <button id="profileButton" class="avatar-button" aria-label="Open traveler profile">CW</button>
       </div>
     </header>
 
-    <div id="connectionBanner" class="connection-banner" hidden>Offline mode: saved trips remain available.</div>
+    <div id="connectionBanner" class="banner warning" hidden>Offline · Your saved trip is still available.</div>
+    <div id="cloudBanner" class="banner cloud">Local travel mode · Cloud connection is ready to configure.</div>
 
     <main>
-      <section id="homeView" class="view active">
-        <div class="hero-card">
-          <div>
-            <p class="eyebrow">NEXT TRIP</p>
-            <h2 id="tripTitle">Plan your next journey</h2>
-            <p id="tripSummary">Tell the AI where you want to go, your budget, and what you enjoy.</p>
+      <section id="homeView" class="view active" aria-labelledby="homeHeading">
+        <article class="trip-hero">
+          <div class="hero-copy">
+            <p class="eyebrow">YOUR NEXT JOURNEY</p>
+            <h1 id="homeHeading">Where should we go next?</h1>
+            <p id="tripSummary">Describe the trip you want. Your AI director will shape the route around your budget, pace, history, and architecture interests.</p>
+            <div class="hero-actions">
+              <button id="startPlanningButton" class="primary-button">Plan with AI</button>
+              <button class="secondary-dark-button" data-view-link="exploreView">Explore map</button>
+            </div>
           </div>
-          <button id="startPlanningButton" class="primary-button">Start planning</button>
-        </div>
+          <div class="route-orbit" aria-hidden="true">
+            <span class="route-dot dot-one"></span><span class="route-dot dot-two"></span>
+            <span class="plane">↗</span>
+          </div>
+        </article>
 
-        <section class="section-block">
-          <div class="section-heading">
-            <h3>Recommended for you</h3>
-            <button id="refreshRecommendations" class="text-button">Refresh</button>
-          </div>
-          <div id="recommendationList" class="card-list"></div>
+        <section class="quick-grid" aria-label="Trip overview">
+          <button class="metric-card" data-view-link="itineraryView">
+            <span class="metric-icon">▦</span><span><small>ITINERARY</small><strong id="homeTripMetric">No active trip</strong></span>
+          </button>
+          <button class="metric-card" data-view-link="exploreView">
+            <span class="metric-icon">⌖</span><span><small>EXPLORE</small><strong>Map your route</strong></span>
+          </button>
         </section>
 
         <section class="section-block">
           <div class="section-heading">
-            <h3>Community insights</h3>
+            <div><p class="eyebrow">PERSONALIZED</p><h2>Recommended for you</h2></div>
+            <button id="refreshRecommendations" class="text-button">Refresh</button>
+          </div>
+          <div id="recommendationList" class="recommendation-grid"></div>
+        </section>
+
+        <section class="section-block">
+          <div class="section-heading">
+            <div><p class="eyebrow">FROM TRAVELERS</p><h2>Community insights</h2></div>
             <button id="shareExperienceButton" class="text-button">Share yours</button>
           </div>
           <div id="communityList" class="card-list"></div>
         </section>
       </section>
 
-      <section id="plannerView" class="view">
-        <div class="section-heading sticky-heading">
-          <div>
-            <p class="eyebrow">AI PLANNER</p>
-            <h2>Build your trip</h2>
-          </div>
-          <button class="icon-button back-button" data-target="homeView" aria-label="Go back">✕</button>
+      <section id="plannerView" class="view" aria-labelledby="plannerHeading">
+        <div class="section-heading page-heading">
+          <div><p class="eyebrow">AI PLANNER</p><h1 id="plannerHeading">Build the whole trip</h1></div>
+          <button class="round-button" data-view-link="homeView" aria-label="Close planner">×</button>
         </div>
-
-        <div id="chatMessages" class="chat-messages"></div>
+        <div class="planner-intro">
+          <span class="ai-pulse" aria-hidden="true">✦</span>
+          <div><strong>Your AI tour director</strong><p>Tell me the destination, dates or number of days, budget, and anything you want included.</p></div>
+        </div>
+        <div class="prompt-chips" aria-label="Example prompts">
+          <button class="prompt-chip">5 days of history and architecture under $1,500</button>
+          <button class="prompt-chip">A relaxed public-transit trip with little walking</button>
+          <button class="prompt-chip">Plan a day trip and keep the schedule flexible</button>
+        </div>
+        <div id="chatMessages" class="chat-messages" aria-live="polite"></div>
         <form id="chatForm" class="chat-form">
-          <input id="chatInput" type="text" placeholder="Example: 4 days in Chicago under $1,200" autocomplete="off" />
-          <button class="primary-button" type="submit">Send</button>
+          <label class="sr-only" for="chatInput">Describe your trip</label>
+          <textarea id="chatInput" rows="2" placeholder="Where do you want to go?" required></textarea>
+          <button class="send-button" type="submit" aria-label="Send trip request">↑</button>
         </form>
       </section>
 
-      <section id="itineraryView" class="view">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">LIVE ITINERARY</p>
-            <h2>Your trip</h2>
-          </div>
+      <section id="exploreView" class="view full-bleed-view" aria-labelledby="exploreHeading">
+        <div class="explore-header">
+          <div><p class="eyebrow">GOOGLE MAPS</p><h1 id="exploreHeading">Explore the route</h1></div>
+          <button id="locateMeButton" class="round-button" aria-label="Use my location">⌖</button>
+        </div>
+        <form id="mapSearchForm" class="map-search">
+          <label class="sr-only" for="mapSearchInput">Search the map</label>
+          <span aria-hidden="true">⌕</span>
+          <input id="mapSearchInput" placeholder="Search a city, landmark, or station" autocomplete="off" />
+          <button type="submit">Search</button>
+        </form>
+        <div class="map-filters" aria-label="Map categories">
+          <button class="filter-chip active" data-map-filter="top sights">Top sights</button>
+          <button class="filter-chip" data-map-filter="historic architecture">History</button>
+          <button class="filter-chip" data-map-filter="local restaurants no alcohol">Food</button>
+          <button class="filter-chip" data-map-filter="train station">Transit</button>
+          <button class="filter-chip" data-map-filter="quiet parks">Quiet</button>
+        </div>
+        <div class="map-frame-wrap">
+          <iframe id="mapFrame" title="Interactive Google Map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen></iframe>
+          <div class="map-label"><span class="live-dot"></span><span id="mapLabelText">Exploring your next destination</span></div>
+        </div>
+        <section class="map-results">
+          <div class="section-heading compact"><h2>Places to consider</h2><span id="mapResultCount" class="result-count"></span></div>
+          <div id="placeList" class="place-list"></div>
+        </section>
+      </section>
+
+      <section id="itineraryView" class="view" aria-labelledby="tripHeading">
+        <div class="section-heading page-heading">
+          <div><p class="eyebrow">LIVE ITINERARY</p><h1 id="tripHeading">Your trip</h1></div>
           <button id="clearTripButton" class="text-button danger-text">Clear</button>
         </div>
         <div id="itineraryContent"></div>
       </section>
 
-      <section id="safetyView" class="view">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">SAFETY TOOLS</p>
-            <h2>Travel assistance</h2>
-          </div>
+      <section id="safetyView" class="view" aria-labelledby="safetyHeading">
+        <div class="safety-hero">
+          <p class="eyebrow light">TRAVEL ASSISTANCE</p>
+          <h1 id="safetyHeading">Support when plans change</h1>
+          <p>Location-aware guidance stays on your device unless you choose to share it.</p>
         </div>
-
         <div class="safety-grid">
-          <button id="shareLocationButton" class="action-card">
-            <span class="action-icon">📍</span>
-            <strong>Share location</strong>
-            <small>Start a consent-based location session</small>
-          </button>
-          <button id="lostButton" class="action-card">
-            <span class="action-icon">🧭</span>
-            <strong>I’m lost</strong>
-            <small>Get route and safe-place guidance</small>
-          </button>
-          <button id="unsafeButton" class="action-card emergency-card">
-            <span class="action-icon">🆘</span>
-            <strong>I feel unsafe</strong>
-            <small>Show emergency steps immediately</small>
-          </button>
-          <button id="checkInButton" class="action-card">
-            <span class="action-icon">✅</span>
-            <strong>Safety check-in</strong>
-            <small>Record that you are okay</small>
-          </button>
+          <button id="shareLocationButton" class="action-card"><span>⌖</span><strong>Use my location</strong><small>See coordinates and nearby-map options</small></button>
+          <button id="lostButton" class="action-card"><span>➤</span><strong>I’m lost</strong><small>Get simple steps and open directions</small></button>
+          <button id="unsafeButton" class="action-card emergency-card"><span>!</span><strong>I feel unsafe</strong><small>Show immediate safety guidance</small></button>
+          <button id="checkInButton" class="action-card"><span>✓</span><strong>Safety check-in</strong><small>Record that you are okay right now</small></button>
         </div>
-
-        <div id="safetyOutput" class="status-panel" aria-live="polite">
-          <strong>Status:</strong> No active safety session.
-        </div>
+        <div id="safetyOutput" class="status-panel" aria-live="polite"><strong>Status:</strong> No active safety session.</div>
+        <p class="safety-note">This app provides general travel guidance and is not an emergency-response service.</p>
       </section>
 
-      <section id="communityView" class="view">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">TRAVELER COMMUNITY</p>
-            <h2>Share an experience</h2>
-          </div>
-          <button class="icon-button back-button" data-target="homeView" aria-label="Go back">✕</button>
+      <section id="communityView" class="view" aria-labelledby="communityHeading">
+        <div class="section-heading page-heading">
+          <div><p class="eyebrow">DURING OR AFTER YOUR TRIP</p><h1 id="communityHeading">Share an experience</h1></div>
+          <button class="round-button" data-view-link="homeView" aria-label="Close experience form">×</button>
         </div>
-
         <form id="experienceForm" class="form-card">
-          <label>
-            Place or experience
-            <input id="experiencePlace" required placeholder="Example: Edinburgh Castle" />
-          </label>
-          <label>
-            Rating
-            <select id="experienceRating" required>
-              <option value="5">5 — Excellent</option>
-              <option value="4">4 — Very good</option>
-              <option value="3">3 — Good</option>
-              <option value="2">2 — Fair</option>
-              <option value="1">1 — Poor</option>
-            </select>
-          </label>
-          <label>
-            What should future travelers know?
-            <textarea id="experienceText" required rows="5" placeholder="Share timing, accessibility, cost, crowd, or transportation tips."></textarea>
-          </label>
-          <label>
-            Best for
-            <select id="experienceAudience">
-              <option value="Everyone">Everyone</option>
-              <option value="Solo travelers">Solo travelers</option>
-              <option value="Families">Families</option>
-              <option value="Budget travelers">Budget travelers</option>
-              <option value="Travelers with mobility needs">Travelers with mobility needs</option>
-              <option value="Food lovers">Food lovers</option>
-            </select>
-          </label>
-          <label class="checkbox-row">
-            <input id="experienceAnonymous" type="checkbox" checked />
-            Post anonymously
-          </label>
+          <label>Place or experience<input id="experiencePlace" required placeholder="Example: Edinburgh Castle" /></label>
+          <div class="two-column">
+            <label>Rating<select id="experienceRating"><option value="5">5 — Excellent</option><option value="4">4 — Very good</option><option value="3">3 — Good</option><option value="2">2 — Fair</option><option value="1">1 — Poor</option></select></label>
+            <label>Best for<select id="experienceAudience"><option>Everyone</option><option>Solo travelers</option><option>Families</option><option>Budget travelers</option><option>Travelers with mobility needs</option><option>History lovers</option></select></label>
+          </div>
+          <label>What should future travelers know?<textarea id="experienceText" required rows="5" placeholder="Share timing, cost, crowds, accessibility, or transportation tips."></textarea></label>
+          <label class="upload-field">Add photos<input id="experiencePhotos" type="file" accept="image/*" multiple /><small id="photoStatus">Up to 3 photos. AI can help describe the experience when cloud mode is connected.</small></label>
+          <label class="check-row"><input id="experienceAnonymous" type="checkbox" checked /> Post anonymously</label>
           <button class="primary-button" type="submit">Save experience</button>
         </form>
       </section>
 
-      <section id="profileView" class="view">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">PERSONALIZATION</p>
-            <h2>Traveler profile</h2>
-          </div>
-          <button class="icon-button back-button" data-target="homeView" aria-label="Go back">✕</button>
+      <section id="profileView" class="view" aria-labelledby="profileHeading">
+        <div class="section-heading page-heading">
+          <div><p class="eyebrow">PERSONALIZATION</p><h1 id="profileHeading">Traveler profile</h1></div>
+          <button class="round-button" data-view-link="homeView" aria-label="Close profile">×</button>
         </div>
-
+        <div id="accountCard" class="account-card">
+          <div class="account-avatar">CW</div>
+          <div><strong id="accountName">Your travel profile</strong><small id="accountEmail">Saved on this device</small></div>
+          <button id="authButton" class="quiet-button" type="button">Connect cloud</button>
+        </div>
         <form id="profileForm" class="form-card">
-          <label>
-            Travel interests
-            <input id="profileInterests" placeholder="history, food, nature, quiet places" />
-          </label>
-          <label>
-            Typical budget per trip
-            <input id="profileBudget" type="number" min="0" step="50" placeholder="1500" />
-          </label>
-          <label>
-            Travel pace
-            <select id="profilePace">
-              <option value="relaxed">Relaxed</option>
-              <option value="balanced">Balanced</option>
-              <option value="active">Active</option>
-            </select>
-          </label>
-          <label>
-            Dietary preferences
-            <input id="profileDiet" placeholder="vegetarian, halal, gluten-free" />
-          </label>
-          <label>
-            Maximum walking time
-            <select id="profileWalking">
-              <option value="10">10 minutes</option>
-              <option value="20">20 minutes</option>
-              <option value="30">30 minutes</option>
-              <option value="45">45 minutes</option>
-            </select>
-          </label>
-          <button class="primary-button" type="submit">Save preferences</button>
+          <div class="two-column">
+            <label>Name<input id="profileName" autocomplete="name" /></label>
+            <label>Preferred language<input id="profileLanguage" placeholder="English" /></label>
+          </div>
+          <fieldset><legend>Travel style</legend><div class="choice-grid"><label class="toggle-choice"><input class="travelStyle" type="checkbox" value="Relaxed" />Relaxed</label><label class="toggle-choice"><input class="travelStyle" type="checkbox" value="Independent" />Independent</label><label class="toggle-choice"><input class="travelStyle" type="checkbox" value="Public transit" />Public transit</label><label class="toggle-choice"><input class="travelStyle" type="checkbox" value="Budget aware" />Budget aware</label></div></fieldset>
+          <label>Interests<input id="profileInterests" placeholder="history, architecture, local culture" /></label>
+          <div class="two-column">
+            <label>Typical trip budget<input id="profileBudget" type="number" min="0" step="50" /></label>
+            <label>Travel pace<select id="profilePace"><option value="relaxed">Relaxed</option><option value="balanced">Balanced</option><option value="active">Active</option></select></label>
+          </div>
+          <div class="two-column">
+            <label>Food preferences<input id="profileDiet" placeholder="Example: no alcohol" /></label>
+            <label>Maximum walking segment<select id="profileWalking"><option value="10">10 minutes</option><option value="20">20 minutes</option><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">60 minutes</option></select></label>
+          </div>
+          <fieldset><legend>AI Travel Assistant</legend><input id="aiPreference" type="hidden" /><div class="ai-choice-grid"><button class="ai-choice" type="button" data-value="Suggestions only">Suggestions only</button><button class="ai-choice" type="button" data-value="Help organize my day">Organize my day</button><button class="ai-choice" type="button" data-value="Automatically optimize free activities">Optimize free time</button><button class="ai-choice" type="button" data-value="Find alternatives when plans change">Handle plan changes</button></div></fieldset>
+          <div class="form-actions"><button class="primary-button" type="submit">Save profile</button><button id="syncButton" class="secondary-button" type="button">Sync now</button></div>
         </form>
       </section>
     </main>
 
     <nav class="bottom-nav" aria-label="Primary navigation">
-      <button class="nav-item active" data-view="homeView"><span>🏠</span>Home</button>
-      <button class="nav-item" data-view="plannerView"><span>✨</span>Plan</button>
-      <button class="nav-item" data-view="itineraryView"><span>🗓️</span>Trip</button>
-      <button class="nav-item" data-view="safetyView"><span>🛡️</span>Safety</button>
+      <button class="nav-item active" data-view-link="homeView"><span>⌂</span><small>Home</small></button>
+      <button class="nav-item" data-view-link="plannerView"><span>✦</span><small>Plan</small></button>
+      <button class="nav-item" data-view-link="exploreView"><span>⌖</span><small>Explore</small></button>
+      <button class="nav-item" data-view-link="itineraryView"><span>▦</span><small>Trip</small></button>
+      <button class="nav-item" data-view-link="safetyView"><span>◇</span><small>Safety</small></button>
     </nav>
   </div>
-
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
