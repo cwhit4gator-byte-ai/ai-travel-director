@@ -17,4 +17,8 @@ A mobile-first personal travel app with AI trip planning, Google Maps exploratio
 3. Install the Functions dependencies from `functions/`.
 4. Deploy Hosting, Functions, Firestore rules, and Storage rules with the Firebase CLI.
 
+## Automatic Hosting deployment
+
+The GitHub Actions workflows deploy pull-request previews and publish `main` to the live Firebase Hosting channel. Add the Firebase service-account JSON as the encrypted repository secret `FIREBASE_SERVICE_ACCOUNT_AI_TRAVEL_DIRECTOR`. Never commit that credential to the repository.
+
 The app never makes purchases. Live prices, availability, opening hours, accessibility, weather, and safety conditions must be verified before travel.
