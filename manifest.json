@@ -3,14 +3,22 @@
   "short_name": "Travel AI",
   "description": "AI-first travel planning, maps, live itineraries, traveler insights, and safety tools.",
   "id": "./",
-  "start_url": "./index.html",
+  "start_url": "./?app_version=8",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#f3f6fa",
   "theme_color": "#0b1830",
-  "categories": ["travel", "productivity"],
+  "categories": [
+    "travel",
+    "productivity"
+  ],
   "icons": [
-    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
   ]
 }

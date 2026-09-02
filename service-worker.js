@@ -1,5 +1,5 @@
-const CACHE_NAME = "ai-travel-director-v7";
-const APP_FILES = ["./", "./index.html", "./styles.css", "./app.js", "./firebase-client.js", "./firebase-config.js", "./maps.js", "./manifest.json", "./icon.svg"];
+const CACHE_NAME = "ai-travel-director-v8";
+const APP_FILES = ["./?app_version=8", "./index.html", "./styles.css?v=8", "./app.js?v=8", "./firebase-client.js?v=8", "./firebase-config.js", "./maps.js?v=8", "./manifest.json?v=8", "./icon.svg"];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(APP_FILES)));
@@ -14,7 +14,7 @@ self.addEventListener("activate", event => {
 self.addEventListener("fetch", event => {
   if (event.request.method !== "GET") return;
   event.respondWith(
-    fetch(event.request)
+    fetch(event.request, { cache: "no-store" })
       .then(response => {
         if (response.ok && new URL(event.request.url).origin === self.location.origin) {
           const copy = response.clone();
@@ -22,6 +22,6 @@ self.addEventListener("fetch", event => {
         }
         return response;
       })
-      .catch(() => caches.match(event.request).then(cached => cached || caches.match("./index.html")))
+      .catch(() => caches.match(event.request).then(cached => cached || (event.request.mode === "navigate" ? caches.match("./?app_version=8") : undefined)))
   );
 });
