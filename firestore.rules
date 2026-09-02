@@ -4,5 +4,84 @@ service cloud.firestore {
     match /users/{userId} {
       allow read, create, update, delete: if request.auth != null && request.auth.uid == userId;
     }
+
+    match /communityExperiences/{postId} {
+      function signedIn() {
+        return request.auth != null;
+      }
+
+      function validCommunityPost() {
+        return request.resource.data.keys().hasOnly([
+          'ownerId', 'authorName', 'anonymous', 'place', 'placeLower', 'rating',
+          'text', 'audience', 'photoURLs', 'photoAnalysis', 'moderationStatus',
+          'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.ownerId is string
+        && request.resource.data.authorName is string
+        && request.resource.data.authorName.size() <= 100
+        && request.resource.data.anonymous is bool
+        && request.resource.data.place is string
+        && request.resource.data.place.size() > 0
+        && request.resource.data.place.size() <= 160
+        && request.resource.data.placeLower is string
+        && request.resource.data.placeLower.size() <= 160
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 2000
+        && request.resource.data.audience is string
+        && request.resource.data.audience.size() <= 100
+        && request.resource.data.photoURLs is list
+        && request.resource.data.photoURLs.size() <= 3
+        && (request.resource.data.photoAnalysis == null || request.resource.data.photoAnalysis is map);
+      }
+
+      allow read: if resource.data.moderationStatus == 'published'
+        || (signedIn() && resource.data.ownerId == request.auth.uid);
+
+      allow create: if signedIn()
+        && validCommunityPost()
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.moderationStatus == 'published'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+
+      allow update: if signedIn()
+        && resource.data.ownerId == request.auth.uid
+        && request.resource.data.ownerId == resource.data.ownerId
+        && request.resource.data.moderationStatus == resource.data.moderationStatus
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'authorName', 'anonymous', 'place', 'placeLower', 'rating', 'text',
+          'audience', 'photoURLs', 'photoAnalysis', 'updatedAt'
+        ])
+        && validCommunityPost()
+        && request.resource.data.updatedAt == request.time;
+
+      allow delete: if signedIn() && resource.data.ownerId == request.auth.uid;
+
+      match /helpful/{userId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create, update: if request.auth != null
+          && request.auth.uid == userId
+          && request.resource.data.keys().hasOnly(['userId', 'createdAt'])
+          && request.resource.data.userId == userId
+          && request.resource.data.createdAt == request.time;
+        allow delete: if request.auth != null && request.auth.uid == userId;
+      }
+
+      match /reports/{userId} {
+        allow read: if request.auth != null && request.auth.uid == userId;
+        allow create: if request.auth != null
+          && request.auth.uid == userId
+          && request.resource.data.keys().hasOnly(['userId', 'reason', 'createdAt'])
+          && request.resource.data.userId == userId
+          && request.resource.data.reason is string
+          && request.resource.data.reason.size() <= 200
+          && request.resource.data.createdAt == request.time;
+      }
+    }
   }
 }
