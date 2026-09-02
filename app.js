@@ -1130,16 +1130,16 @@ async function initializeApp() {
       await refreshCommunityFeed({ reset: true });
     }
     else handleAuthenticatedUser(null);
-    if (!localStorage.getItem(ONBOARDING_KEY)) {
-      state.onboardingStep = 0;
-      renderOnboardingStep();
-      onboardingDialog.showModal();
-      trackAppEvent("onboarding_started", { step: 1 });
-    }
   } catch (error) {
     console.error(error);
     trackAppError("app_startup", error);
     setCloudBanner("Cloud setup could not start · Local travel mode remains available.", "error");
+  }
+  if (!localStorage.getItem(ONBOARDING_KEY)) {
+    state.onboardingStep = 0;
+    renderOnboardingStep();
+    onboardingDialog.showModal();
+    trackAppEvent("onboarding_started", { step: 1 });
   }
 }
 
