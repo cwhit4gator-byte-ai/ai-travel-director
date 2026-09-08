@@ -6,6 +6,7 @@
 //   {destination}  city/overnight stop
 //   {query}        hotel style plus destination
 //   {subId}        privacy-safe Travel AI attribution token
+//   {checkIn} {checkOut} {adults} {children} {rooms}  stay details
 window.TRAVEL_AFFILIATE_CONFIG = Object.freeze({
   providers: [
     {
