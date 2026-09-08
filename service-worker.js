@@ -1,4 +1,4 @@
-const CACHE_NAME = "ai-travel-director-v16";
+const CACHE_NAME = "ai-travel-director-v17";
 const APP_FILES = ["./?app_version=15", "./index.html", "./styles.css?v=15", "./app.js?v=15", "./firebase-client.js?v=15", "./firebase-config.js", "./affiliate-config.js?v=16", "./maps.js?v=15", "./manifest.json?v=15", "./icon.svg"];
 
 self.addEventListener("install", event => {
