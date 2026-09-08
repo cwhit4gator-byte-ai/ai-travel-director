@@ -71,7 +71,8 @@ export async function renderGoogleMap(element, query) {
   if (!element) throw new Error("The map container is missing.");
   const sequence = ++renderSequence;
 
-  const [{ Map }, { AdvancedMarkerElement }, { Geocoder }] = await loadLibraries();
+  const [{ Map }, { AdvancedMarkerElement }, geocodingLibrary] = await loadLibraries();
+  const Geocoder = geocodingLibrary?.Geocoder || window.google.maps.Geocoder;
 
   map ||= new Map(element, {
     center: { lat: 40.7128, lng: -74.006 },
@@ -104,7 +105,8 @@ export async function renderGoogleMap(element, query) {
 
 
 export async function resolvePlaceCity(query) {
-  const [{ Geocoder }] = await loadLibraries();
+  const libraries = await loadLibraries();
+  const Geocoder = libraries[2]?.Geocoder || window.google.maps.Geocoder;
   geocoder ||= new Geocoder();
   const response = await Promise.race([geocoder.geocode({ address: query }), watchForAuthenticationFailure()]);
   const result = response.results?.[0];
