@@ -118,12 +118,18 @@ export async function resolvePlaceCity(query) {
 }
 
 
-export async function searchNearbyHotels(location, maximum = 9) {
+export async function searchNearbyHotels(location, preference = "best", maximum = 9) {
   await loadLibraries();
+  const searchIntent = {
+    value: "affordable well-rated hotels",
+    central: "hotels in the city center",
+    quiet: "quiet well-rated hotels",
+    best: "best well-rated hotels"
+  }[preference] || "best well-rated hotels";
   const { Place } = await window.google.maps.importLibrary("places");
   const response = await Promise.race([
     Place.searchByText({
-      textQuery: `well rated hotels in ${location}`,
+      textQuery: `${searchIntent} in ${location}`,
       fields: ["id", "displayName", "formattedAddress", "shortFormattedAddress", "location", "rating", "userRatingCount", "photos", "googleMapsURI", "priceLevel"],
       includedType: "lodging",
       maxResultCount: Math.max(3, Math.min(20, Number(maximum) || 9)),
