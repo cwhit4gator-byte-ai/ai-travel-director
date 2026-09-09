@@ -71,7 +71,8 @@ export async function renderGoogleMap(element, query) {
   if (!element) throw new Error("The map container is missing.");
   const sequence = ++renderSequence;
 
-  const [{ Map }, { AdvancedMarkerElement }, { Geocoder }] = await loadLibraries();
+  const [{ Map }, { AdvancedMarkerElement }, geocodingLibrary] = await loadLibraries();
+  const Geocoder = geocodingLibrary?.Geocoder || window.google.maps.Geocoder;
 
   map ||= new Map(element, {
     center: { lat: 40.7128, lng: -74.006 },
@@ -104,7 +105,8 @@ export async function renderGoogleMap(element, query) {
 
 
 export async function resolvePlaceCity(query) {
-  const [{ Geocoder }] = await loadLibraries();
+  const libraries = await loadLibraries();
+  const Geocoder = libraries[2]?.Geocoder || window.google.maps.Geocoder;
   geocoder ||= new Geocoder();
   const response = await Promise.race([geocoder.geocode({ address: query }), watchForAuthenticationFailure()]);
   const result = response.results?.[0];
@@ -115,4 +117,38 @@ export async function resolvePlaceCity(query) {
     if (component?.long_name) return component.long_name;
   }
   throw new Error("Google Maps did not return a city for this itinerary event.");
+}
+
+
+export async function searchNearbyHotels(location, preference = "best", maximum = 9) {
+  await loadLibraries();
+  const searchIntent = {
+    value: "affordable well-rated hotels",
+    central: "hotels in the city center",
+    quiet: "quiet well-rated hotels",
+    best: "best well-rated hotels"
+  }[preference] || "best well-rated hotels";
+  const { Place } = await window.google.maps.importLibrary("places");
+  const response = await Promise.race([
+    Place.searchByText({
+      textQuery: `${searchIntent} in ${location}`,
+      fields: ["id", "displayName", "formattedAddress", "shortFormattedAddress", "location", "rating", "userRatingCount", "photos", "googleMapsURI", "priceLevel"],
+      includedType: "lodging",
+      maxResultCount: Math.max(3, Math.min(20, Number(maximum) || 9)),
+      language: "en-US"
+    }),
+    watchForAuthenticationFailure()
+  ]);
+  return (response.places || []).map(place => ({
+    id: place.id || "",
+    name: place.displayName || "Hotel",
+    address: place.shortFormattedAddress || place.formattedAddress || location,
+    rating: Number(place.rating || 0),
+    reviewCount: Number(place.userRatingCount || 0),
+    priceLevel: String(place.priceLevel || ""),
+    latitude: typeof place.location?.lat === "function" ? place.location.lat() : Number(place.location?.lat || 0),
+    longitude: typeof place.location?.lng === "function" ? place.location.lng() : Number(place.location?.lng || 0),
+    photoURL: place.photos?.[0]?.getURI ? place.photos[0].getURI({ maxWidth: 900, maxHeight: 600 }) : "",
+    mapsURL: place.googleMapsURI || ""
+  })).filter(place => place.id && place.name);
 }

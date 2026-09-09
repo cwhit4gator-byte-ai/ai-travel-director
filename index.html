@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b1830" />
   <meta name="description" content="AI-first travel planning, live itineraries, maps, traveler insights, and safety tools." />
   <title>AI Travel Director</title>
-  <link rel="manifest" href="manifest.json?v=15" />
+  <link rel="manifest" href="manifest.json?v=21" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=15" />
+  <link rel="stylesheet" href="styles.css?v=21" />
 </head>
 <body>
   <div class="app-shell">
@@ -160,11 +160,21 @@
       <section id="hotelsView" class="view" aria-labelledby="hotelsHeading">
         <div class="section-heading page-heading"><div><p class="eyebrow">STAYS FOR YOUR TRIP</p><h1 id="hotelsHeading">Hotel recommendations</h1></div><button class="round-button" data-view-link="homeView" aria-label="Close hotel recommendations">×</button></div>
         <article class="hotel-intro"><span class="hotel-intro-icon" aria-hidden="true">▤</span><div><strong id="hotelDestination">Plan a trip to personalize your stays</strong><p id="hotelIntroText">Choose a destination and the app will recommend stay styles around your budget, pace, and interests.</p></div></article>
+        <form id="hotelStayForm" class="hotel-stay-form">
+          <div class="hotel-form-heading"><strong>Stay details</strong><span>Used only to improve hotel searches</span></div>
+          <label><span>Check-in</span><input type="date" data-hotel-stay-field="checkIn" aria-label="Hotel check-in date"></label>
+          <label><span>Check-out</span><input type="date" data-hotel-stay-field="checkOut" aria-label="Hotel check-out date"></label>
+          <label><span>Adults</span><select data-hotel-stay-field="adults" aria-label="Number of adults"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></label>
+          <label><span>Children</span><select data-hotel-stay-field="children" aria-label="Number of children"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
+          <label><span>Rooms</span><select data-hotel-stay-field="rooms" aria-label="Number of rooms"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
+          <label><span>Display currency</span><select data-hotel-stay-field="currency" aria-label="Hotel estimate currency"><option value="USD">USD — US Dollar</option><option value="EUR">EUR — Euro</option><option value="GBP">GBP — British Pound</option><option value="CAD">CAD — Canadian Dollar</option><option value="AUD">AUD — Australian Dollar</option><option value="JPY">JPY — Japanese Yen</option><option value="CHF">CHF — Swiss Franc</option><option value="MXN">MXN — Mexican Peso</option><option value="BRL">BRL — Brazilian Real</option><option value="INR">INR — Indian Rupee</option><option value="ZAR">ZAR — South African Rand</option></select></label>
+          <p id="hotelStaySummary" class="field-note hotel-stay-summary" aria-live="polite">Choose check-in to automatically set checkout for this hotel stop.</p>
+        </form>
         <div class="overnight-picker"><label for="overnightLocationSelect">Choose an AI-recommended overnight location</label><select id="overnightLocationSelect"></select><p id="overnightLocationSummary" class="field-note">Locations are populated automatically from your trip itinerary.</p></div>
         <p class="hotel-step-label">Then choose the kind of stay</p>
         <div class="hotel-toolbar" aria-label="Hotel preference"><button class="filter-chip active" type="button" data-hotel-filter="best">Best match</button><button class="filter-chip" type="button" data-hotel-filter="value">Best value</button><button class="filter-chip" type="button" data-hotel-filter="central">Central</button><button class="filter-chip" type="button" data-hotel-filter="quiet">Quiet</button></div>
         <div id="hotelList" class="hotel-grid"></div>
-        <p class="booking-disclaimer">Prices are planning estimates, not live quotes. Availability, total price, taxes, fees, cancellation terms, and accessibility must be confirmed with the booking provider. Travel AI does not complete reservations.</p>
+        <aside class="affiliate-disclosure" aria-label="Affiliate disclosure"><strong>How booking links work</strong><p>Some hotel links are affiliate links. Travel AI may earn money from a qualified click or completed booking at no additional cost to you. Recommendations stay based on traveler fit, location, and budget—not commission. Prices are planning estimates; confirm availability, total price, taxes, fees, cancellation terms, and accessibility with the provider.</p></aside>
       </section>
 
       <section id="safetyView" class="view" aria-labelledby="safetyHeading">
@@ -323,6 +333,7 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="app.js?v=15"></script>
+  <script src="affiliate-config.js?v=21"></script>
+  <script type="module" src="app.js?v=21"></script>
 </body>
 </html>
