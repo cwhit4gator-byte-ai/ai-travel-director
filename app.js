@@ -16,8 +16,8 @@ import {
   uploadExperiencePhotos,
   requestPhotoAnalysis,
   trackAppEvent
-} from "./firebase-client.js?v=20";
-import { renderGoogleMap, resolvePlaceCity, searchNearbyHotels } from "./maps.js?v=20";
+} from "./firebase-client.js?v=21";
+import { renderGoogleMap, resolvePlaceCity, searchNearbyHotels } from "./maps.js?v=21";
 
 const STORAGE_KEY = "aitd_v3_state";
 const ONBOARDING_KEY = "aitd_onboarding_v1";
@@ -81,7 +81,20 @@ const state = {
 };
 
 const hotelPlaceCache = new Map();
-const hotelCurrencyRates = { USD: 1 };
+const hotelCurrencyRates = {
+  USD: 1,
+  EUR: 0.86,
+  GBP: 0.74,
+  CAD: 1.38,
+  AUD: 1.51,
+  JPY: 147.4,
+  CHF: 0.80,
+  MXN: 18.7,
+  BRL: 5.43,
+  INR: 88,
+  ZAR: 17.3
+};
+const hotelCurrencyLiveRates = new Set(["USD"]);
 
 const activityCatalog = [
   { name: "Old town architecture walk", category: "Architecture", time: "9:00 AM", cost: 0, icon: "⌂", note: "Begin early for quiet streets and softer light." },
@@ -294,21 +307,22 @@ function formatHotelCurrency(valueUSD) {
   }).format((Number(valueUSD) || 0) * rate);
 }
 async function loadHotelCurrencyRate(currency = selectedHotelCurrency()) {
-  if (currency === "USD" || hotelCurrencyRates[currency] || state.hotelCurrencyLoading === currency) return;
+  if (currency === "USD" || hotelCurrencyLiveRates.has(currency) || state.hotelCurrencyLoading === currency) return;
   state.hotelCurrencyLoading = currency;
   renderHotels();
   try {
-    const response = await fetch(`https://api.frankfurter.app/latest?from=USD&to=${encodeURIComponent(currency)}`);
+    const response = await fetch(`https://api.frankfurter.dev/v2/rate/USD/${encodeURIComponent(currency)}`);
     if (!response.ok) throw new Error("Currency service unavailable");
     const result = await response.json();
-    const rate = Number(result?.rates?.[currency]);
+    const rate = Number(result?.rate);
     if (!rate) throw new Error("Currency rate unavailable");
     hotelCurrencyRates[currency] = rate;
-    trackAppEvent("hotel_currency_changed", { currency });
+    hotelCurrencyLiveRates.add(currency);
+    trackAppEvent("hotel_currency_changed", { currency, source: "current_reference_rate" });
   } catch (error) {
-    console.warn("Could not update hotel display currency", error);
-    state.hotelStay.currency = "USD";
-    toast("Currency conversion is unavailable; estimates remain in USD");
+    console.warn("Could not refresh hotel display currency", error);
+    trackAppEvent("hotel_currency_changed", { currency, source: "built_in_reference_rate" });
+    toast(`Showing a reference ${currency} conversion; confirm the final price with the booking provider`);
   } finally {
     state.hotelCurrencyLoading = "";
     scheduleSave();
