@@ -16,8 +16,8 @@ import {
   uploadExperiencePhotos,
   requestPhotoAnalysis,
   trackAppEvent
-} from "./firebase-client.js?v=22";
-import { renderGoogleMap, resolvePlaceCity, searchNearbyHotels } from "./maps.js?v=22";
+} from "./firebase-client.js?v=23";
+import { renderGoogleMap, resolvePlaceCity, searchNearbyHotels } from "./maps.js?v=23";
 
 const STORAGE_KEY = "aitd_v3_state";
 const ONBOARDING_KEY = "aitd_onboarding_v1";
@@ -447,9 +447,21 @@ function configuredAffiliateLinks(hotel) {
 }
 function hotelProviderQuery(hotel) {
   const name = String(hotel.name || "").trim();
+  const address = String(hotel.area || "").trim();
   const location = String(hotel.location || "").trim();
-  if (!location || name.toLocaleLowerCase().includes(location.toLocaleLowerCase())) return name;
-  return `${name}, ${location}`;
+  const tripDestination = String(state.trip?.destination || "").trim();
+  const genericAreas = ["Historic center", "Transit-connected district", "Calmer residential area"];
+  const geographicParts = hotel.source === "google_places" && address && !genericAreas.includes(address)
+    ? [address]
+    : [location, tripDestination];
+  const queryParts = [name];
+  geographicParts.forEach(part => {
+    if (!part) return;
+    const normalizedPart = part.toLocaleLowerCase();
+    const alreadyIncluded = queryParts.some(existing => existing.toLocaleLowerCase().includes(normalizedPart) || normalizedPart.includes(existing.toLocaleLowerCase()));
+    if (!alreadyIncluded) queryParts.push(part);
+  });
+  return queryParts.join(", ");
 }
 function hotelSearchLinks(hotel) {
   const query = hotelProviderQuery(hotel);
