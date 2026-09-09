@@ -16,8 +16,8 @@ import {
   uploadExperiencePhotos,
   requestPhotoAnalysis,
   trackAppEvent
-} from "./firebase-client.js?v=23";
-import { renderGoogleMap, resolvePlaceCity, searchNearbyHotels } from "./maps.js?v=23";
+} from "./firebase-client.js?v=24";
+import { renderGoogleMap, resolvePlaceCity, searchNearbyHotels } from "./maps.js?v=24";
 
 const STORAGE_KEY = "aitd_v3_state";
 const ONBOARDING_KEY = "aitd_onboarding_v1";
@@ -466,36 +466,45 @@ function hotelProviderQuery(hotel) {
 function hotelSearchLinks(hotel) {
   const query = hotelProviderQuery(hotel);
   const stay = state.hotelStay;
-  const adults = String(stay.adults || 2);
-  const children = String(stay.children || 0);
-  const rooms = String(stay.rooms || 1);
+  const adults = Math.max(1, Number(stay.adults) || 2);
+  const children = Math.max(0, Number(stay.children) || 0);
+  const rooms = Math.max(1, Number(stay.rooms) || 1);
   const currency = selectedHotelCurrency();
+  const hasDates = Boolean(stay.checkIn && stay.checkOut);
+  const stayText = hasDates
+    ? `${stay.checkIn} to ${stay.checkOut}, ${adults} adult${adults === 1 ? "" : "s"}, ${children} child${children === 1 ? "" : "ren"}, ${rooms} room${rooms === 1 ? "" : "s"}`
+    : `${adults} adult${adults === 1 ? "" : "s"}, ${children} child${children === 1 ? "" : "ren"}, ${rooms} room${rooms === 1 ? "" : "s"}`;
 
   const google = new URL(`https://www.google.com/travel/hotels/${encodeURIComponent(hotel.location)}`);
-  google.searchParams.set("q", query);
+  google.searchParams.set("q", `${query}; ${stayText}`);
   if (stay.checkIn) google.searchParams.set("checkin", stay.checkIn);
   if (stay.checkOut) google.searchParams.set("checkout", stay.checkOut);
-  google.searchParams.set("adults", adults);
-  google.searchParams.set("children", children);
-  google.searchParams.set("rooms", rooms);
+  google.searchParams.set("adults", String(adults));
+  google.searchParams.set("children", String(children));
+  google.searchParams.set("rooms", String(rooms));
   google.searchParams.set("curr", currency);
 
   const booking = new URL("https://www.booking.com/searchresults.html");
   booking.searchParams.set("ss", query);
   if (stay.checkIn) booking.searchParams.set("checkin", stay.checkIn);
   if (stay.checkOut) booking.searchParams.set("checkout", stay.checkOut);
-  booking.searchParams.set("group_adults", adults);
-  booking.searchParams.set("group_children", children);
-  booking.searchParams.set("no_rooms", rooms);
+  booking.searchParams.set("group_adults", String(adults));
+  booking.searchParams.set("group_children", String(children));
+  booking.searchParams.set("no_rooms", String(rooms));
   booking.searchParams.set("selected_currency", currency);
 
-  const expedia = new URL("https://www.expedia.com/Hotel-Search");
-  expedia.searchParams.set("destination", query);
-  if (stay.checkIn) expedia.searchParams.set("startDate", stay.checkIn);
-  if (stay.checkOut) expedia.searchParams.set("endDate", stay.checkOut);
-  expedia.searchParams.set("adults", adults);
-  expedia.searchParams.set("children", children);
-  expedia.searchParams.set("rooms", rooms);
+  const expediaPath = hasDates
+    ? `/go/hotel/search/Destination/${encodeURIComponent(stay.checkIn)}/${encodeURIComponent(stay.checkOut)}`
+    : "/go/hotel/search/Destination";
+  const expedia = new URL(expediaPath, "https://www.expedia.com");
+  expedia.searchParams.set("SearchType", "Destination");
+  expedia.searchParams.set("CityName", hotel.location);
+  expedia.searchParams.set("ChainName", hotel.name);
+  if (stay.checkIn) expedia.searchParams.set("InDate", stay.checkIn);
+  if (stay.checkOut) expedia.searchParams.set("OutDate", stay.checkOut);
+  expedia.searchParams.set("NumRoom", String(rooms));
+  expedia.searchParams.set("NumAdult-Room1", String(adults));
+  expedia.searchParams.set("NumChild-Room1", String(children));
 
   return {
     google: google.href,
@@ -508,7 +517,7 @@ function bookingLinksMarkup(hotel, links) {
   const affiliateLinks = links.affiliates.map((provider, index) =>
     `<a class="${index === 0 ? "primary-button" : ""}" href="${escapeHTML(provider.url)}" target="_blank" rel="sponsored noopener noreferrer" data-booking-provider="${escapeHTML(provider.label)}" data-revenue-model="${escapeHTML(provider.revenueModel)}" data-affiliate-link="true">${index === 0 ? "Compare & book with " : ""}${escapeHTML(provider.label)}</a>`
   ).join("");
-  const directLinks = `<a class="${affiliateLinks ? "" : "primary-button"}" href="${links.google}" target="_blank" rel="noopener noreferrer" data-booking-provider="Google Hotels" data-revenue-model="none">Compare on Google Hotels</a><a href="${links.booking}" target="_blank" rel="noopener noreferrer" data-booking-provider="Booking.com" data-revenue-model="none">Booking.com</a><a href="${links.expedia}" target="_blank" rel="noopener noreferrer" data-booking-provider="Expedia" data-revenue-model="none">Expedia</a>`;
+  const directLinks = `<a class="${affiliateLinks ? "" : "primary-button"}" href="${links.google}" target="_blank" rel="noopener noreferrer" data-booking-provider="Google Hotels" data-revenue-model="none">Search Google Hotels with stay details</a><a href="${links.booking}" target="_blank" rel="noopener noreferrer" data-booking-provider="Booking.com" data-revenue-model="none">Search Booking.com with stay details</a><a href="${links.expedia}" target="_blank" rel="noopener noreferrer" data-booking-provider="Expedia" data-revenue-model="none">Continue to Expedia</a>`;
   return affiliateLinks + directLinks;
 }
 function selectHotelForOvernight(hotelName, nightly) {
