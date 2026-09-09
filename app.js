@@ -16,8 +16,8 @@ import {
   uploadExperiencePhotos,
   requestPhotoAnalysis,
   trackAppEvent
-} from "./firebase-client.js?v=19";
-import { renderGoogleMap, resolvePlaceCity, searchNearbyHotels } from "./maps.js?v=19";
+} from "./firebase-client.js?v=20";
+import { renderGoogleMap, resolvePlaceCity, searchNearbyHotels } from "./maps.js?v=20";
 
 const STORAGE_KEY = "aitd_v3_state";
 const ONBOARDING_KEY = "aitd_onboarding_v1";
@@ -75,11 +75,13 @@ const state = {
   selectedOvernightLocation: "",
   hotelLocationsResolving: false,
   hotelLocationsAttempted: false,
-  hotelStay: { checkIn: "", checkOut: "", adults: 2, children: 0, rooms: 1, ...(saved.hotelStay || {}) },
-  hotelPlacesLoadingKey: ""
+  hotelStay: { checkIn: "", checkOut: "", adults: 2, children: 0, rooms: 1, currency: "USD", ...(saved.hotelStay || {}) },
+  hotelPlacesLoadingKey: "",
+  hotelCurrencyLoading: ""
 };
 
 const hotelPlaceCache = new Map();
+const hotelCurrencyRates = { USD: 1 };
 
 const activityCatalog = [
   { name: "Old town architecture walk", category: "Architecture", time: "9:00 AM", cost: 0, icon: "⌂", note: "Begin early for quiet streets and softer light." },
@@ -276,13 +278,42 @@ function overnightStopLabel(stop) {
 function hotelSearchKey(location = selectedOvernightLocation()) {
   return `${String(location).trim().toLocaleLowerCase()}::${state.hotelFilter}`;
 }
-function formatUSD(value) {
-  return new Intl.NumberFormat("en-US", {
+function selectedHotelCurrency() {
+  const currency = String(state.hotelStay.currency || "USD").toUpperCase();
+  return /^[A-Z]{3}$/.test(currency) ? currency : "USD";
+}
+function formatHotelCurrency(valueUSD) {
+  const currency = selectedHotelCurrency();
+  const rate = Number(hotelCurrencyRates[currency] || (currency === "USD" ? 1 : 0));
+  if (!rate) return "Updating currency…";
+  return new Intl.NumberFormat(navigator.language || "en-US", {
     style: "currency",
-    currency: "USD",
+    currency,
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
-  }).format(Number(value) || 0);
+  }).format((Number(valueUSD) || 0) * rate);
+}
+async function loadHotelCurrencyRate(currency = selectedHotelCurrency()) {
+  if (currency === "USD" || hotelCurrencyRates[currency] || state.hotelCurrencyLoading === currency) return;
+  state.hotelCurrencyLoading = currency;
+  renderHotels();
+  try {
+    const response = await fetch(`https://api.frankfurter.app/latest?from=USD&to=${encodeURIComponent(currency)}`);
+    if (!response.ok) throw new Error("Currency service unavailable");
+    const result = await response.json();
+    const rate = Number(result?.rates?.[currency]);
+    if (!rate) throw new Error("Currency rate unavailable");
+    hotelCurrencyRates[currency] = rate;
+    trackAppEvent("hotel_currency_changed", { currency });
+  } catch (error) {
+    console.warn("Could not update hotel display currency", error);
+    state.hotelStay.currency = "USD";
+    toast("Currency conversion is unavailable; estimates remain in USD");
+  } finally {
+    state.hotelCurrencyLoading = "";
+    scheduleSave();
+    renderHotels();
+  }
 }
 function estimatedHotelNightly(multiplier = 1) {
   const days = Math.max(1, Number(state.trip?.days || 1));
@@ -526,7 +557,7 @@ function renderHotels() {
   const stop = selectedOvernightStop();
   const location = stop?.location || "";
   if (stop) picker.value = stop.id;
-  ["checkIn", "checkOut", "adults", "children", "rooms"].forEach(field => {
+  ["checkIn", "checkOut", "adults", "children", "rooms", "currency"].forEach(field => {
     const input = document.querySelector(`[data-hotel-stay-field="${field}"]`);
     if (input && String(input.value) !== String(state.hotelStay[field])) input.value = state.hotelStay[field];
   });
@@ -551,15 +582,17 @@ function renderHotels() {
   }
   const hotels = hotelRecommendations();
   const stayNights = hotelStayNightCount(stop);
+  const displayCurrency = selectedHotelCurrency();
   const staySummary = document.getElementById("hotelStaySummary");
   if (staySummary) staySummary.textContent = state.hotelStay.checkIn && state.hotelStay.checkOut ? `${stayNights} night${stayNights === 1 ? "" : "s"} selected · hotel totals updated below` : `Choose check-in to automatically set checkout for this ${Math.max(1, stop.days.length)}-night stop.`;
-  const fallbackNotice = entry?.error ? `<div class="hotel-source-note warning"><strong>Live property details are temporarily unavailable.</strong><span>Showing clearly labeled planning options instead. Price-check links still work.</span></div>` : `<div class="hotel-source-note"><strong>Real properties from Google Places</strong><span>Ratings and review counts can change. Prices remain planning estimates until confirmed on the booking site.</span></div>`;
-  list.innerHTML = fallbackNotice + hotels.map(hotel => {
+  const currencyStatus = state.hotelCurrencyLoading ? `<div class="hotel-source-note"><strong>Updating currency…</strong><span>Converting planning estimates to ${escapeHTML(displayCurrency)}.</span></div>` : "";
+  const fallbackNotice = entry?.error ? `<div class="hotel-source-note warning"><strong>Live property details are temporarily unavailable.</strong><span>Showing clearly labeled planning options instead. Price-check links still work.</span></div>` : `<div class="hotel-source-note"><strong>Real properties from Google Places</strong><span>Ratings and review counts can change. Estimates display in ${escapeHTML(displayCurrency)}; booking providers confirm final currency and price.</span></div>`;
+  list.innerHTML = currencyStatus + fallbackNotice + hotels.map(hotel => {
     const links = hotelSearchLinks(hotel);
     const selected = state.trip?.hotelSelections?.[hotel.stopId]?.name === hotel.name;
     const media = hotel.photoURL ? `<img class="hotel-photo" src="${escapeHTML(hotel.photoURL)}" alt="${escapeHTML(hotel.name)}" loading="lazy" referrerpolicy="no-referrer">` : `<span class="hotel-icon" aria-hidden="true">${hotel.icon}</span>`;
     const sourceTag = hotel.source === "google_places" ? "Actual property" : "Planning option";
-    return `<article class="hotel-card${selected ? " selected-hotel" : ""}">${media}<div class="hotel-card-top"><span class="hotel-icon compact" aria-hidden="true">${hotel.icon}</span><div><p class="eyebrow">${escapeHTML(sourceTag)} · ${escapeHTML(hotel.location)}</p><h2>${escapeHTML(hotel.name)}</h2></div></div><p class="hotel-address">${escapeHTML(hotel.area)}</p><p class="hotel-reason">${escapeHTML(hotel.reason)}</p><div class="hotel-facts"><span>Estimated stay total <strong>${formatUSD(hotel.nightly * stayNights)} for ${stayNights} night${stayNights === 1 ? "" : "s"}</strong></span><span>${formatUSD(hotel.nightly)}/night estimate · ${escapeHTML(hotel.amenity)}</span></div><div class="hotel-actions"><button class="secondary-button" type="button" data-hotel-map="${escapeHTML(hotel.name)}">View on map</button><button class="secondary-button" type="button" data-hotel-select="${escapeHTML(hotel.name)}" data-hotel-rate="${hotel.nightly}" ${selected ? "disabled" : ""}>${selected ? "✓ Selected" : "Select for this stop"}</button></div><div class="booking-links" aria-label="Compare hotel prices and booking providers">${bookingLinksMarkup(hotel, links)}</div></article>`;
+    return `<article class="hotel-card${selected ? " selected-hotel" : ""}">${media}<div class="hotel-card-top"><span class="hotel-icon compact" aria-hidden="true">${hotel.icon}</span><div><p class="eyebrow">${escapeHTML(sourceTag)} · ${escapeHTML(hotel.location)}</p><h2>${escapeHTML(hotel.name)}</h2></div></div><p class="hotel-address">${escapeHTML(hotel.area)}</p><p class="hotel-reason">${escapeHTML(hotel.reason)}</p><div class="hotel-facts"><span>Estimated stay total <strong>${formatHotelCurrency(hotel.nightly * stayNights)} for ${stayNights} night${stayNights === 1 ? "" : "s"}</strong></span><span>${formatHotelCurrency(hotel.nightly)}/night estimate · ${escapeHTML(hotel.amenity)}</span></div><div class="hotel-actions"><button class="secondary-button" type="button" data-hotel-map="${escapeHTML(hotel.name)}">View on map</button><button class="secondary-button" type="button" data-hotel-select="${escapeHTML(hotel.name)}" data-hotel-rate="${hotel.nightly}" ${selected ? "disabled" : ""}>${selected ? "✓ Selected" : "Select for this stop"}</button></div><div class="booking-links" aria-label="Compare hotel prices and booking providers">${bookingLinksMarkup(hotel, links)}</div></article>`;
   }).join("");
 }
 function communityItems() {
@@ -1190,6 +1223,7 @@ document.getElementById("hotelStayForm").addEventListener("change", event => {
   const numeric = ["adults", "children", "rooms"].includes(field);
   state.hotelStay[field] = numeric ? Math.max(field === "children" ? 0 : 1, Number(event.target.value) || 0) : event.target.value;
   if (field === "checkIn") autoPopulateHotelCheckout();
+  if (field === "currency") loadHotelCurrencyRate(state.hotelStay.currency);
   if (field === "checkOut" && state.hotelStay.checkIn && state.hotelStay.checkOut <= state.hotelStay.checkIn) {
     state.hotelStay.checkOut = "";
     event.target.value = "";
