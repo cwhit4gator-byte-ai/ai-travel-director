@@ -142,7 +142,7 @@ export async function searchNearbyHotels(location, preference = "best", maximum 
   return (response.places || []).map(place => ({
     id: place.id || "",
     name: place.displayName || "Hotel",
-    address: place.shortFormattedAddress || place.formattedAddress || location,
+    address: place.formattedAddress || place.shortFormattedAddress || location,
     rating: Number(place.rating || 0),
     reviewCount: Number(place.userRatingCount || 0),
     priceLevel: String(place.priceLevel || ""),
