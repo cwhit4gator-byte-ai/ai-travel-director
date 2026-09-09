@@ -16,8 +16,8 @@ import {
   uploadExperiencePhotos,
   requestPhotoAnalysis,
   trackAppEvent
-} from "./firebase-client.js?v=17";
-import { renderGoogleMap, resolvePlaceCity, searchNearbyHotels } from "./maps.js?v=17";
+} from "./firebase-client.js?v=18";
+import { renderGoogleMap, resolvePlaceCity, searchNearbyHotels } from "./maps.js?v=18";
 
 const STORAGE_KEY = "aitd_v3_state";
 const ONBOARDING_KEY = "aitd_onboarding_v1";
@@ -283,6 +283,28 @@ function estimatedHotelNightly(multiplier = 1) {
   const base = Math.max(75, Math.min(450, Math.round((tripBudget * .35) / Math.max(1, days - 1) * Math.min(1.15, locationCount))));
   return Math.round(base * multiplier);
 }
+function addDaysToISODate(value, days) {
+  const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return "";
+  const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+  date.setUTCDate(date.getUTCDate() + Math.max(1, Number(days) || 1));
+  return date.toISOString().slice(0, 10);
+}
+function hotelStayNightCount(stop = selectedOvernightStop()) {
+  const checkIn = String(state.hotelStay.checkIn || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  const checkOut = String(state.hotelStay.checkOut || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (checkIn && checkOut) {
+    const start = Date.UTC(Number(checkIn[1]), Number(checkIn[2]) - 1, Number(checkIn[3]));
+    const end = Date.UTC(Number(checkOut[1]), Number(checkOut[2]) - 1, Number(checkOut[3]));
+    const nights = Math.round((end - start) / 86400000);
+    if (nights > 0) return nights;
+  }
+  return Math.max(1, stop?.days?.length || 1);
+}
+function autoPopulateHotelCheckout() {
+  if (!state.hotelStay.checkIn) return;
+  state.hotelStay.checkOut = addDaysToISODate(state.hotelStay.checkIn, Math.max(1, selectedOvernightStop()?.days?.length || 1));
+}
 function fallbackHotelRecommendations(stop) {
   const interests = normalizeInterests(state.profile.interests).toLowerCase();
   const styles = [
@@ -403,11 +425,12 @@ function selectHotelForOvernight(hotelName, nightly) {
   const stop = selectedOvernightStop();
   if (!stop) return;
   state.trip.hotelSelections ||= {};
-  state.trip.hotelSelections[stop.id] = { name: hotelName, nightly: Number(nightly), location: stop.location, nights: stop.days.length, selectedAt: new Date().toISOString() };
+  const stayNights = hotelStayNightCount(stop);
+  state.trip.hotelSelections[stop.id] = { name: hotelName, nightly: Number(nightly), location: stop.location, nights: stayNights, checkIn: state.hotelStay.checkIn, checkOut: state.hotelStay.checkOut, selectedAt: new Date().toISOString() };
   const day = (state.trip.itinerary || []).find(item => stop.days.includes(Number(item.day))) || state.trip.itinerary?.[0];
   if (day) {
     day.items = (day.items || []).filter(item => !(item.category === "Hotel" && item.hotelStopId === stop.id));
-    day.items.push({ id: crypto.randomUUID(), time: "Overnight", name: hotelName, category: "Hotel", cost: Number(nightly) * Math.max(1, stop.days.length), hotelStopId: stop.id, overnightLocation: stop.location, note: `Selected for a ${stop.days.length || 1}-night stay in ${stop.location}. Nightly price is an estimate; confirm the final total and terms with the booking provider.`, done: false });
+    day.items.push({ id: crypto.randomUUID(), time: "Overnight", name: hotelName, category: "Hotel", cost: Number(nightly) * stayNights, hotelStopId: stop.id, overnightLocation: stop.location, note: `Selected for a ${stayNights}-night stay in ${stop.location}. Nightly price is an estimate; confirm the final total and terms with the booking provider.`, done: false });
   }
   scheduleSave(); renderAll(); toast(`Hotel selected for ${stop.location}`);
 }
@@ -519,13 +542,16 @@ function renderHotels() {
     return;
   }
   const hotels = hotelRecommendations();
+  const stayNights = hotelStayNightCount(stop);
+  const staySummary = document.getElementById("hotelStaySummary");
+  if (staySummary) staySummary.textContent = state.hotelStay.checkIn && state.hotelStay.checkOut ? `${stayNights} night${stayNights === 1 ? "" : "s"} selected · hotel totals updated below` : `Choose check-in to automatically set checkout for this ${Math.max(1, stop.days.length)}-night stop.`;
   const fallbackNotice = entry?.error ? `<div class="hotel-source-note warning"><strong>Live property details are temporarily unavailable.</strong><span>Showing clearly labeled planning options instead. Price-check links still work.</span></div>` : `<div class="hotel-source-note"><strong>Real properties from Google Places</strong><span>Ratings and review counts can change. Prices remain planning estimates until confirmed on the booking site.</span></div>`;
   list.innerHTML = fallbackNotice + hotels.map(hotel => {
     const links = hotelSearchLinks(hotel);
     const selected = state.trip?.hotelSelections?.[hotel.stopId]?.name === hotel.name;
     const media = hotel.photoURL ? `<img class="hotel-photo" src="${escapeHTML(hotel.photoURL)}" alt="${escapeHTML(hotel.name)}" loading="lazy" referrerpolicy="no-referrer">` : `<span class="hotel-icon" aria-hidden="true">${hotel.icon}</span>`;
     const sourceTag = hotel.source === "google_places" ? "Actual property" : "Planning option";
-    return `<article class="hotel-card${selected ? " selected-hotel" : ""}">${media}<div class="hotel-card-top"><span class="hotel-icon compact" aria-hidden="true">${hotel.icon}</span><div><p class="eyebrow">${escapeHTML(sourceTag)} · ${escapeHTML(hotel.location)}</p><h2>${escapeHTML(hotel.name)}</h2></div></div><p class="hotel-address">${escapeHTML(hotel.area)}</p><p class="hotel-reason">${escapeHTML(hotel.reason)}</p><div class="hotel-facts"><span>Planning estimate <strong>$${hotel.nightly.toLocaleString("en-US")}/night</strong></span><span>${escapeHTML(hotel.amenity)}</span></div><div class="hotel-actions"><button class="secondary-button" type="button" data-hotel-map="${escapeHTML(hotel.name)}">View on map</button><button class="secondary-button" type="button" data-hotel-select="${escapeHTML(hotel.name)}" data-hotel-rate="${hotel.nightly}" ${selected ? "disabled" : ""}>${selected ? "✓ Selected" : "Select for this stop"}</button></div><div class="booking-links" aria-label="Compare hotel prices and booking providers">${bookingLinksMarkup(hotel, links)}</div></article>`;
+    return `<article class="hotel-card${selected ? " selected-hotel" : ""}">${media}<div class="hotel-card-top"><span class="hotel-icon compact" aria-hidden="true">${hotel.icon}</span><div><p class="eyebrow">${escapeHTML(sourceTag)} · ${escapeHTML(hotel.location)}</p><h2>${escapeHTML(hotel.name)}</h2></div></div><p class="hotel-address">${escapeHTML(hotel.area)}</p><p class="hotel-reason">${escapeHTML(hotel.reason)}</p><div class="hotel-facts"><span>Estimated stay total <strong>${(hotel.nightly * stayNights).toLocaleString("en-US")} for ${stayNights} night${stayNights === 1 ? "" : "s"}</strong></span><span>${hotel.nightly.toLocaleString("en-US")}/night estimate · ${escapeHTML(hotel.amenity)}</span></div><div class="hotel-actions"><button class="secondary-button" type="button" data-hotel-map="${escapeHTML(hotel.name)}">View on map</button><button class="secondary-button" type="button" data-hotel-select="${escapeHTML(hotel.name)}" data-hotel-rate="${hotel.nightly}" ${selected ? "disabled" : ""}>${selected ? "✓ Selected" : "Select for this stop"}</button></div><div class="booking-links" aria-label="Compare hotel prices and booking providers">${bookingLinksMarkup(hotel, links)}</div></article>`;
   }).join("");
 }
 function communityItems() {
@@ -1144,12 +1170,18 @@ document.getElementById("chatForm").addEventListener("submit", async event => {
 document.getElementById("mapSearchForm").addEventListener("submit", event => { event.preventDefault(); const query = document.getElementById("mapSearchInput").value.trim(); if (query) { trackAppEvent("map_search", { method: "typed" }); updateMap(query); } });
 document.querySelectorAll("[data-map-filter]").forEach(button => button.addEventListener("click", () => { document.querySelectorAll("[data-map-filter]").forEach(item => item.classList.remove("active")); button.classList.add("active"); trackAppEvent("map_search", { method: "category" }); updateMap(button.dataset.mapFilter); }));
 document.getElementById("placeList").addEventListener("click", event => { const button = event.target.closest("[data-add-place]"); if (button) addPlaceToTrip(button.dataset.addPlace, button.dataset.placeCategory, button.dataset.placeCost); });
-document.getElementById("overnightLocationSelect").addEventListener("change", event => { state.selectedOvernightLocation = event.target.value; renderHotels(); });
+document.getElementById("overnightLocationSelect").addEventListener("change", event => {
+  state.selectedOvernightLocation = event.target.value;
+  if (state.hotelStay.checkIn) autoPopulateHotelCheckout();
+  scheduleSave();
+  renderHotels();
+});
 document.getElementById("hotelStayForm").addEventListener("change", event => {
   const field = event.target.dataset.hotelStayField;
   if (!field) return;
   const numeric = ["adults", "children", "rooms"].includes(field);
   state.hotelStay[field] = numeric ? Math.max(field === "children" ? 0 : 1, Number(event.target.value) || 0) : event.target.value;
+  if (field === "checkIn") autoPopulateHotelCheckout();
   if (field === "checkOut" && state.hotelStay.checkIn && state.hotelStay.checkOut <= state.hotelStay.checkIn) {
     state.hotelStay.checkOut = "";
     event.target.value = "";

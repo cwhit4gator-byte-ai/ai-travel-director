@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b1830" />
   <meta name="description" content="AI-first travel planning, live itineraries, maps, traveler insights, and safety tools." />
   <title>AI Travel Director</title>
-  <link rel="manifest" href="manifest.json?v=17" />
+  <link rel="manifest" href="manifest.json?v=18" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=17" />
+  <link rel="stylesheet" href="styles.css?v=18" />
 </head>
 <body>
   <div class="app-shell">
@@ -167,6 +167,7 @@
           <label><span>Adults</span><select data-hotel-stay-field="adults" aria-label="Number of adults"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option></select></label>
           <label><span>Children</span><select data-hotel-stay-field="children" aria-label="Number of children"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
           <label><span>Rooms</span><select data-hotel-stay-field="rooms" aria-label="Number of rooms"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></label>
+          <p id="hotelStaySummary" class="field-note hotel-stay-summary" aria-live="polite">Choose check-in to automatically set checkout for this hotel stop.</p>
         </form>
         <div class="overnight-picker"><label for="overnightLocationSelect">Choose an AI-recommended overnight location</label><select id="overnightLocationSelect"></select><p id="overnightLocationSummary" class="field-note">Locations are populated automatically from your trip itinerary.</p></div>
         <p class="hotel-step-label">Then choose the kind of stay</p>
@@ -331,7 +332,7 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="affiliate-config.js?v=17"></script>
-  <script type="module" src="app.js?v=17"></script>
+  <script src="affiliate-config.js?v=18"></script>
+  <script type="module" src="app.js?v=18"></script>
 </body>
 </html>
