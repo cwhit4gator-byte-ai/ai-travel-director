@@ -16,8 +16,8 @@ import {
   uploadExperiencePhotos,
   requestPhotoAnalysis,
   trackAppEvent
-} from "./firebase-client.js?v=18";
-import { renderGoogleMap, resolvePlaceCity, searchNearbyHotels } from "./maps.js?v=18";
+} from "./firebase-client.js?v=19";
+import { renderGoogleMap, resolvePlaceCity, searchNearbyHotels } from "./maps.js?v=19";
 
 const STORAGE_KEY = "aitd_v3_state";
 const ONBOARDING_KEY = "aitd_onboarding_v1";
@@ -275,6 +275,14 @@ function overnightStopLabel(stop) {
 }
 function hotelSearchKey(location = selectedOvernightLocation()) {
   return `${String(location).trim().toLocaleLowerCase()}::${state.hotelFilter}`;
+}
+function formatUSD(value) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(Number(value) || 0);
 }
 function estimatedHotelNightly(multiplier = 1) {
   const days = Math.max(1, Number(state.trip?.days || 1));
@@ -551,7 +559,7 @@ function renderHotels() {
     const selected = state.trip?.hotelSelections?.[hotel.stopId]?.name === hotel.name;
     const media = hotel.photoURL ? `<img class="hotel-photo" src="${escapeHTML(hotel.photoURL)}" alt="${escapeHTML(hotel.name)}" loading="lazy" referrerpolicy="no-referrer">` : `<span class="hotel-icon" aria-hidden="true">${hotel.icon}</span>`;
     const sourceTag = hotel.source === "google_places" ? "Actual property" : "Planning option";
-    return `<article class="hotel-card${selected ? " selected-hotel" : ""}">${media}<div class="hotel-card-top"><span class="hotel-icon compact" aria-hidden="true">${hotel.icon}</span><div><p class="eyebrow">${escapeHTML(sourceTag)} · ${escapeHTML(hotel.location)}</p><h2>${escapeHTML(hotel.name)}</h2></div></div><p class="hotel-address">${escapeHTML(hotel.area)}</p><p class="hotel-reason">${escapeHTML(hotel.reason)}</p><div class="hotel-facts"><span>Estimated stay total <strong>${(hotel.nightly * stayNights).toLocaleString("en-US")} for ${stayNights} night${stayNights === 1 ? "" : "s"}</strong></span><span>${hotel.nightly.toLocaleString("en-US")}/night estimate · ${escapeHTML(hotel.amenity)}</span></div><div class="hotel-actions"><button class="secondary-button" type="button" data-hotel-map="${escapeHTML(hotel.name)}">View on map</button><button class="secondary-button" type="button" data-hotel-select="${escapeHTML(hotel.name)}" data-hotel-rate="${hotel.nightly}" ${selected ? "disabled" : ""}>${selected ? "✓ Selected" : "Select for this stop"}</button></div><div class="booking-links" aria-label="Compare hotel prices and booking providers">${bookingLinksMarkup(hotel, links)}</div></article>`;
+    return `<article class="hotel-card${selected ? " selected-hotel" : ""}">${media}<div class="hotel-card-top"><span class="hotel-icon compact" aria-hidden="true">${hotel.icon}</span><div><p class="eyebrow">${escapeHTML(sourceTag)} · ${escapeHTML(hotel.location)}</p><h2>${escapeHTML(hotel.name)}</h2></div></div><p class="hotel-address">${escapeHTML(hotel.area)}</p><p class="hotel-reason">${escapeHTML(hotel.reason)}</p><div class="hotel-facts"><span>Estimated stay total <strong>${formatUSD(hotel.nightly * stayNights)} for ${stayNights} night${stayNights === 1 ? "" : "s"}</strong></span><span>${formatUSD(hotel.nightly)}/night estimate · ${escapeHTML(hotel.amenity)}</span></div><div class="hotel-actions"><button class="secondary-button" type="button" data-hotel-map="${escapeHTML(hotel.name)}">View on map</button><button class="secondary-button" type="button" data-hotel-select="${escapeHTML(hotel.name)}" data-hotel-rate="${hotel.nightly}" ${selected ? "disabled" : ""}>${selected ? "✓ Selected" : "Select for this stop"}</button></div><div class="booking-links" aria-label="Compare hotel prices and booking providers">${bookingLinksMarkup(hotel, links)}</div></article>`;
   }).join("");
 }
 function communityItems() {
