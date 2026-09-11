@@ -16,8 +16,8 @@ import {
   uploadExperiencePhotos,
   requestPhotoAnalysis,
   trackAppEvent
-} from "./firebase-client.js?v=24";
-import { renderGoogleMap, resolvePlaceCity, searchNearbyHotels } from "./maps.js?v=24";
+} from "./firebase-client.js?v=25";
+import { renderGoogleMap, resolvePlaceCity, searchNearbyHotels } from "./maps.js?v=25";
 
 const STORAGE_KEY = "aitd_v3_state";
 const ONBOARDING_KEY = "aitd_onboarding_v1";
@@ -1043,6 +1043,106 @@ function tripTotals() {
   return { items: items.length, completed: items.filter(item => item.done).length, planned: items.reduce((sum, item) => sum + Number(item.cost || 0), 0) };
 }
 
+function preferredTripTravelMode() {
+  const styles = (state.profile.travelStyles || []).map(value => String(value).toLocaleLowerCase());
+  if (styles.some(value => value.includes("driv") || value.includes("road trip"))) return "driving";
+  if (styles.some(value => value.includes("walk"))) return "walking";
+  return "transit";
+}
+
+function tripTravelModeLabel() {
+  return { driving: "driving", walking: "walking", transit: "transit" }[preferredTripTravelMode()] || "transit";
+}
+
+function itineraryItemQuery(item, day) {
+  const name = String(item?.name || "").trim();
+  const location = String(item?.location || day?.overnightLocation || state.trip?.destination || "").trim();
+  if (!name) return location;
+  return location && !name.toLocaleLowerCase().includes(location.toLocaleLowerCase()) ? `${name}, ${location}` : name;
+}
+
+function itemDirectionsURL(day, itemIndex) {
+  const items = day?.items || [];
+  const item = items[itemIndex];
+  if (!item) return "";
+  const url = new URL("https://www.google.com/maps/dir/");
+  url.searchParams.set("api", "1");
+  url.searchParams.set("destination", itineraryItemQuery(item, day));
+  url.searchParams.set("travelmode", preferredTripTravelMode());
+  if (itemIndex > 0) url.searchParams.set("origin", itineraryItemQuery(items[itemIndex - 1], day));
+  return url.href;
+}
+
+function dayRouteURL(day) {
+  const stops = (day?.items || []).map(item => itineraryItemQuery(item, day)).filter(Boolean);
+  if (!stops.length) return "";
+  if (stops.length === 1) {
+    const search = new URL("https://www.google.com/maps/search/");
+    search.searchParams.set("api", "1");
+    search.searchParams.set("query", stops[0]);
+    return search.href;
+  }
+  const url = new URL("https://www.google.com/maps/dir/");
+  url.searchParams.set("api", "1");
+  url.searchParams.set("origin", stops[0]);
+  url.searchParams.set("destination", stops.at(-1));
+  url.searchParams.set("travelmode", preferredTripTravelMode());
+  if (stops.length > 2) url.searchParams.set("waypoints", stops.slice(1, -1).join("|"));
+  return url.href;
+}
+
+function dayShareText(day) {
+  const items = (day.items || []).map(item => {
+    const location = item.location ? ` · ${item.location}` : "";
+    const completed = item.done ? " ✓" : "";
+    return `${item.time} — ${item.name}${location}${completed}`;
+  });
+  return [`Day ${day.day}: ${day.title}`, ...items, day.overnightLocation ? `Overnight: ${day.overnightLocation}` : "", `Route: ${dayRouteURL(day)}`].filter(Boolean).join("\n");
+}
+
+async function shareItineraryDay(day) {
+  const text = dayShareText(day);
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: `Day ${day.day} · ${state.trip.destination}`, text });
+      trackAppEvent("trip_day_shared", { method: "native" });
+      return;
+    }
+    await navigator.clipboard.writeText(text);
+    trackAppEvent("trip_day_shared", { method: "clipboard" });
+    toast("Day plan copied");
+  } catch (error) {
+    if (error?.name !== "AbortError") {
+      trackAppError("trip_day_share", error);
+      toast("Could not share this day");
+    }
+  }
+}
+
+function refreshTripOvernightLocations(day) {
+  const latestLocation = [...(day.items || [])].reverse().map(item => String(item.location || "").trim()).find(Boolean);
+  if (latestLocation) day.overnightLocation = latestLocation;
+  state.trip.overnightLocations = [...new Set((state.trip.itinerary || []).map(item => item.overnightLocation).filter(Boolean))];
+  state.hotelLocationsAttempted = false;
+}
+
+function openTripItemDialog(dayNumber, itemId = "") {
+  const day = state.trip?.itinerary?.find(item => String(item.day) === String(dayNumber));
+  if (!day) return;
+  const item = itemId ? day.items.find(entry => entry.id === itemId) : null;
+  document.getElementById("tripItemDialogTitle").textContent = item ? "Edit activity" : `Add to day ${day.day}`;
+  document.getElementById("tripItemId").value = item?.id || "";
+  document.getElementById("tripItemDay").value = day.day;
+  document.getElementById("tripItemTime").value = item?.time || "6:00 PM";
+  document.getElementById("tripItemCost").value = Number(item?.cost || 0);
+  document.getElementById("tripItemName").value = item?.name || "";
+  document.getElementById("tripItemLocation").value = item?.location || day.overnightLocation || "";
+  document.getElementById("tripItemNote").value = item?.note || "";
+  document.getElementById("deleteTripItem").hidden = !item;
+  document.getElementById("tripItemDialog").showModal();
+  document.getElementById("tripItemName").focus();
+}
+
 function renderItinerary() {
   const content = document.getElementById("itineraryContent");
   if (!state.trip) {
@@ -1057,9 +1157,23 @@ function renderItinerary() {
     <article class="trip-summary-card"><p class="eyebrow light">${state.trip.generatedBy === "openai" ? "AI-GENERATED DRAFT" : "WORKING ITINERARY"}</p><h2>${escapeHTML(state.trip.destination)}</h2><p>${state.trip.days} days · Purchases and live availability are not verified.</p><div class="trip-stats"><div class="trip-stat"><small>ACTIVITIES</small><strong>${totals.items}</strong></div><div class="trip-stat"><small>EST. PLAN</small><strong>${totals.planned.toLocaleString("en-US")}</strong></div><div class="trip-stat"><small>BUDGET</small><strong>${budget.toLocaleString("en-US")}</strong></div></div><div class="budget-bar" aria-label="${budgetPercent}% of working budget represented by listed activity estimates"><span style="width:${budgetPercent}%"></span></div></article>
     ${communityTripItems().length ? `<aside class="community-replan-card"><div><span class="community-replan-icon" aria-hidden="true">✦</span><p><strong>${communityTripItems().length} community pick${communityTripItems().length === 1 ? "" : "s"} saved</strong><small>Let AI choose the best day and time while keeping your travel preferences.</small></p></div><button class="primary-button compact-button" type="button" data-replan-community ${state.isReplanningCommunity ? "disabled" : ""}>${state.isReplanningCommunity ? "Replanning…" : "Fit with AI"}</button></aside>` : ""}
     <div class="day-tabs">${state.trip.itinerary.map(day => `<button class="day-tab" data-scroll-day="${day.day}">Day ${day.day}</button>`).join("")}</div>
-    ${state.trip.itinerary.map(day => `<section class="day-card" id="tripDay${day.day}"><p class="eyebrow">DAY ${day.day}</p><h3>${escapeHTML(day.title)}</h3>${(day.items || []).map((item, index) => `
-      <article class="timeline-item ${item.done ? "done" : ""}" data-item-id="${item.id}"><div class="timeline-time">${escapeHTML(item.time)}</div><div class="timeline-main"><strong>${escapeHTML(item.name)}</strong>${item.communityPostId ? '<span class="community-source">Community pick</span>' : ""}<p>${escapeHTML(item.note || item.category || "Flexible plan item")}</p></div><div class="timeline-actions"><button class="mini-button" data-trip-action="toggle" title="Mark complete">✓</button><button class="mini-button" data-trip-action="map" title="Open on map">⌖</button>${index > 0 ? '<button class="mini-button" data-trip-action="up" title="Move earlier">↑</button>' : ""}</div></article>
-    `).join("")}</section>`).join("")}
+    ${state.trip.itinerary.map(day => {
+      const routeURL = dayRouteURL(day);
+      const dayCost = (day.items || []).reduce((sum, item) => sum + Number(item.cost || 0), 0);
+      const dayCompleted = (day.items || []).filter(item => item.done).length;
+      return `<section class="day-card" id="tripDay${day.day}" data-day-number="${day.day}">
+        <div class="day-card-heading"><div><p class="eyebrow">DAY ${day.day}</p><h3>${escapeHTML(day.title)}</h3></div><span class="day-progress">${dayCompleted}/${(day.items || []).length} done</span></div>
+        <div class="day-meta"><span>⌖ ${escapeHTML(day.overnightLocation || state.trip.destination)}</span><span>${dayCost.toLocaleString("en-US")} estimated</span></div>
+        ${(day.items || []).map((item, index) => `
+          <article class="timeline-item ${item.done ? "done" : ""}" data-item-id="${item.id}">
+            <div class="timeline-time">${escapeHTML(item.time)}</div>
+            <div class="timeline-main"><strong>${escapeHTML(item.name)}</strong>${item.communityPostId ? '<span class="community-source">Community pick</span>' : ""}${item.location ? `<span class="timeline-location">⌖ ${escapeHTML(item.location)}</span>` : ""}<p>${escapeHTML(item.note || item.category || "Flexible plan item")}</p></div>
+            <div class="timeline-actions"><button class="mini-button" data-trip-action="toggle" aria-label="${item.done ? "Mark incomplete" : "Mark complete"}" title="${item.done ? "Mark incomplete" : "Mark complete"}">✓</button><a class="mini-button" href="${escapeHTML(itemDirectionsURL(day, index))}" target="_blank" rel="noopener" data-trip-route="item" aria-label="Directions ${index ? "from the previous stop" : "to this stop"}" title="Directions ${index ? "from previous stop" : "to this stop"}">↗</a><button class="mini-button" data-trip-action="edit" aria-label="Edit ${escapeHTML(item.name)}" title="Edit activity">✎</button>${index > 0 ? '<button class="mini-button" data-trip-action="up" aria-label="Move activity earlier" title="Move earlier">↑</button>' : ""}</div>
+          </article>
+        `).join("")}
+        <div class="day-tools"><button class="secondary-button" type="button" data-day-action="add" data-day-number="${day.day}">＋ Add activity</button>${routeURL ? `<a class="secondary-button" href="${escapeHTML(routeURL)}" target="_blank" rel="noopener" data-trip-route="day">Open ${tripTravelModeLabel()} route</a>` : ""}<button class="secondary-button" type="button" data-day-action="share" data-day-number="${day.day}">Share day</button></div>
+      </section>`;
+    }).join("")}
   `;
 }
 
@@ -1312,6 +1426,8 @@ document.getElementById("locateMeButton").addEventListener("click", () => {
 });
 
 document.getElementById("itineraryContent").addEventListener("click", event => {
+  const routeLink = event.target.closest("[data-trip-route]");
+  if (routeLink) trackAppEvent("trip_route_opened", { source: routeLink.dataset.tripRoute });
   const replanButton = event.target.closest("[data-replan-community]");
   if (replanButton) {
     replanCommunityPicks();
@@ -1319,16 +1435,71 @@ document.getElementById("itineraryContent").addEventListener("click", event => {
   }
   const dayButton = event.target.closest("[data-scroll-day]");
   if (dayButton) document.getElementById(`tripDay${dayButton.dataset.scrollDay}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  const dayAction = event.target.closest("[data-day-action]");
+  if (dayAction) {
+    const day = state.trip?.itinerary?.find(item => String(item.day) === String(dayAction.dataset.dayNumber));
+    if (!day) return;
+    if (dayAction.dataset.dayAction === "add") openTripItemDialog(day.day);
+    if (dayAction.dataset.dayAction === "share") shareItineraryDay(day);
+    return;
+  }
   const action = event.target.closest("[data-trip-action]");
   if (!action) return;
   const row = action.closest("[data-item-id]");
   const found = findTripItem(row.dataset.itemId);
   if (!found) return;
   if (action.dataset.tripAction === "toggle") found.item.done = !found.item.done;
-  if (action.dataset.tripAction === "up" && found.index > 0) [found.day.items[found.index - 1], found.day.items[found.index]] = [found.day.items[found.index], found.day.items[found.index - 1]];
+  if (action.dataset.tripAction === "edit") {
+    openTripItemDialog(found.day.day, found.item.id);
+    return;
+  }
+  if (action.dataset.tripAction === "up" && found.index > 0) {
+    [found.day.items[found.index - 1], found.day.items[found.index]] = [found.day.items[found.index], found.day.items[found.index - 1]];
+    refreshTripOvernightLocations(found.day);
+  }
   if (action.dataset.tripAction === "map") { state.mapQuery = `${found.item.name} in ${state.trip.destination}`; showView("exploreView"); return; }
   scheduleSave();
   renderItinerary();
+});
+
+const tripItemDialog = document.getElementById("tripItemDialog");
+document.getElementById("closeTripItemDialog").addEventListener("click", () => tripItemDialog.close());
+tripItemDialog.addEventListener("click", event => { if (event.target === tripItemDialog) tripItemDialog.close(); });
+document.getElementById("tripItemForm").addEventListener("submit", event => {
+  event.preventDefault();
+  const day = state.trip?.itinerary?.find(item => String(item.day) === String(document.getElementById("tripItemDay").value));
+  if (!day) return;
+  const itemId = document.getElementById("tripItemId").value;
+  const values = {
+    time: document.getElementById("tripItemTime").value.trim(),
+    name: document.getElementById("tripItemName").value.trim(),
+    location: document.getElementById("tripItemLocation").value.trim(),
+    note: document.getElementById("tripItemNote").value.trim(),
+    cost: Math.max(0, Number(document.getElementById("tripItemCost").value) || 0)
+  };
+  if (!values.name || !values.time) return;
+  const existing = itemId ? day.items.find(item => item.id === itemId) : null;
+  if (existing) Object.assign(existing, values);
+  else day.items.push({ id: crypto.randomUUID(), category: "Custom", done: false, ...values });
+  refreshTripOvernightLocations(day);
+  scheduleSave();
+  renderAll();
+  tripItemDialog.close();
+  trackAppEvent(existing ? "trip_activity_edited" : "trip_activity_added", { source: "itinerary" });
+  toast(existing ? "Activity updated" : `Added to day ${day.day}`);
+});
+document.getElementById("deleteTripItem").addEventListener("click", () => {
+  const day = state.trip?.itinerary?.find(item => String(item.day) === String(document.getElementById("tripItemDay").value));
+  const itemId = document.getElementById("tripItemId").value;
+  const item = day?.items?.find(entry => entry.id === itemId);
+  if (!day || !item || !window.confirm(`Remove “${item.name}” from day ${day.day}?`)) return;
+  day.items = day.items.filter(entry => entry.id !== itemId);
+  refreshTripOvernightLocations(day);
+  scheduleSave();
+  renderAll();
+  tripItemDialog.close();
+  trackAppEvent("trip_activity_removed", { source: "itinerary" });
+  toast("Activity removed");
 });
 
 document.getElementById("clearTripButton").addEventListener("click", () => { state.trip = null; scheduleSave(); renderAll(); toast("Trip cleared"); });
@@ -1555,7 +1726,7 @@ window.addEventListener("online", updateConnectionState);
 window.addEventListener("offline", updateConnectionState);
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; installButton.hidden = false; trackAppEvent("pwa_install_prompt", { status: "available" }); });
 installButton.addEventListener("click", async () => { if (!deferredInstallPrompt) return toast("Use your browser menu to add this app to your home screen"); deferredInstallPrompt.prompt(); const choice = await deferredInstallPrompt.userChoice; trackAppEvent("pwa_install_result", { result: choice.outcome }); deferredInstallPrompt = null; installButton.hidden = true; });
-const APP_VERSION = "15";
+const APP_VERSION = "25";
 async function registerServiceWorker() {
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
