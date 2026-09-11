@@ -16,8 +16,8 @@ import {
   uploadExperiencePhotos,
   requestPhotoAnalysis,
   trackAppEvent
-} from "./firebase-client.js?v=25";
-import { renderGoogleMap, resolvePlaceCity, searchNearbyHotels } from "./maps.js?v=25";
+} from "./firebase-client.js?v=26";
+import { renderGoogleMap, resolvePlaceCity, searchNearbyHotels } from "./maps.js?v=26";
 
 const STORAGE_KEY = "aitd_v3_state";
 const ONBOARDING_KEY = "aitd_onboarding_v1";
@@ -1050,10 +1050,6 @@ function preferredTripTravelMode() {
   return "transit";
 }
 
-function tripTravelModeLabel() {
-  return { driving: "driving", walking: "walking", transit: "transit" }[preferredTripTravelMode()] || "transit";
-}
-
 function itineraryItemQuery(item, day) {
   const name = String(item?.name || "").trim();
   const location = String(item?.location || day?.overnightLocation || state.trip?.destination || "").trim();
@@ -1068,8 +1064,21 @@ function itemDirectionsURL(day, itemIndex) {
   const url = new URL("https://www.google.com/maps/dir/");
   url.searchParams.set("api", "1");
   url.searchParams.set("destination", itineraryItemQuery(item, day));
-  url.searchParams.set("travelmode", preferredTripTravelMode());
+  const travelMode = preferredTripTravelMode();
+  // Let Google offer available modes when transit is the general preference.
+  if (travelMode !== "transit") url.searchParams.set("travelmode", travelMode);
   if (itemIndex > 0) url.searchParams.set("origin", itineraryItemQuery(items[itemIndex - 1], day));
+  return url.href;
+}
+
+function currentLocationTransitURL(day) {
+  const firstItem = (day?.items || [])[0];
+  if (!firstItem) return "";
+  const url = new URL("https://www.google.com/maps/dir/");
+  url.searchParams.set("api", "1");
+  url.searchParams.set("destination", itineraryItemQuery(firstItem, day));
+  url.searchParams.set("travelmode", "transit");
+  // Omitting origin lets Google use the device location or ask for a start.
   return url.href;
 }
 
@@ -1086,7 +1095,9 @@ function dayRouteURL(day) {
   url.searchParams.set("api", "1");
   url.searchParams.set("origin", stops[0]);
   url.searchParams.set("destination", stops.at(-1));
-  url.searchParams.set("travelmode", preferredTripTravelMode());
+  const travelMode = preferredTripTravelMode();
+  // Let Google offer available modes when transit is the general preference.
+  if (travelMode !== "transit") url.searchParams.set("travelmode", travelMode);
   if (stops.length > 2) url.searchParams.set("waypoints", stops.slice(1, -1).join("|"));
   return url.href;
 }
@@ -1156,14 +1167,18 @@ function renderItinerary() {
   content.innerHTML = `
     <article class="trip-summary-card"><p class="eyebrow light">${state.trip.generatedBy === "openai" ? "AI-GENERATED DRAFT" : "WORKING ITINERARY"}</p><h2>${escapeHTML(state.trip.destination)}</h2><p>${state.trip.days} days · Purchases and live availability are not verified.</p><div class="trip-stats"><div class="trip-stat"><small>ACTIVITIES</small><strong>${totals.items}</strong></div><div class="trip-stat"><small>EST. PLAN</small><strong>${totals.planned.toLocaleString("en-US")}</strong></div><div class="trip-stat"><small>BUDGET</small><strong>${budget.toLocaleString("en-US")}</strong></div></div><div class="budget-bar" aria-label="${budgetPercent}% of working budget represented by listed activity estimates"><span style="width:${budgetPercent}%"></span></div></article>
     ${communityTripItems().length ? `<aside class="community-replan-card"><div><span class="community-replan-icon" aria-hidden="true">✦</span><p><strong>${communityTripItems().length} community pick${communityTripItems().length === 1 ? "" : "s"} saved</strong><small>Let AI choose the best day and time while keeping your travel preferences.</small></p></div><button class="primary-button compact-button" type="button" data-replan-community ${state.isReplanningCommunity ? "disabled" : ""}>${state.isReplanningCommunity ? "Replanning…" : "Fit with AI"}</button></aside>` : ""}
+    <aside class="trip-route-note"><strong>Getting around</strong><span>Use the highlighted button to check public transit from your current location to the day's first stop. Some routes may not be available by transit, so walking or a taxi may be required. Google Maps may ask for your location or a starting point.</span></aside>
     <div class="day-tabs">${state.trip.itinerary.map(day => `<button class="day-tab" data-scroll-day="${day.day}">Day ${day.day}</button>`).join("")}</div>
     ${state.trip.itinerary.map(day => {
       const routeURL = dayRouteURL(day);
+      const transitURL = currentLocationTransitURL(day);
+      const firstStopName = day.items?.[0]?.name || "the first stop";
       const dayCost = (day.items || []).reduce((sum, item) => sum + Number(item.cost || 0), 0);
       const dayCompleted = (day.items || []).filter(item => item.done).length;
       return `<section class="day-card" id="tripDay${day.day}" data-day-number="${day.day}">
         <div class="day-card-heading"><div><p class="eyebrow">DAY ${day.day}</p><h3>${escapeHTML(day.title)}</h3></div><span class="day-progress">${dayCompleted}/${(day.items || []).length} done</span></div>
         <div class="day-meta"><span>⌖ ${escapeHTML(day.overnightLocation || state.trip.destination)}</span><span>${dayCost.toLocaleString("en-US")} estimated</span></div>
+        ${transitURL ? `<a class="day-transit-button" href="${escapeHTML(transitURL)}" target="_blank" rel="noopener" data-trip-route="transit" aria-label="Check transit from my location to ${escapeHTML(firstStopName)}"><span class="day-transit-icon" aria-hidden="true">↗</span><span><strong>Check transit from my location</strong><small>To ${escapeHTML(firstStopName)}</small></span></a>` : ""}
         ${(day.items || []).map((item, index) => `
           <article class="timeline-item ${item.done ? "done" : ""}" data-item-id="${item.id}">
             <div class="timeline-time">${escapeHTML(item.time)}</div>
@@ -1171,7 +1186,7 @@ function renderItinerary() {
             <div class="timeline-actions"><button class="mini-button" data-trip-action="toggle" aria-label="${item.done ? "Mark incomplete" : "Mark complete"}" title="${item.done ? "Mark incomplete" : "Mark complete"}">✓</button><a class="mini-button" href="${escapeHTML(itemDirectionsURL(day, index))}" target="_blank" rel="noopener" data-trip-route="item" aria-label="Directions ${index ? "from the previous stop" : "to this stop"}" title="Directions ${index ? "from previous stop" : "to this stop"}">↗</a><button class="mini-button" data-trip-action="edit" aria-label="Edit ${escapeHTML(item.name)}" title="Edit activity">✎</button>${index > 0 ? '<button class="mini-button" data-trip-action="up" aria-label="Move activity earlier" title="Move earlier">↑</button>' : ""}</div>
           </article>
         `).join("")}
-        <div class="day-tools"><button class="secondary-button" type="button" data-day-action="add" data-day-number="${day.day}">＋ Add activity</button>${routeURL ? `<a class="secondary-button" href="${escapeHTML(routeURL)}" target="_blank" rel="noopener" data-trip-route="day">Open ${tripTravelModeLabel()} route</a>` : ""}<button class="secondary-button" type="button" data-day-action="share" data-day-number="${day.day}">Share day</button></div>
+        <div class="day-tools"><button class="secondary-button" type="button" data-day-action="add" data-day-number="${day.day}">＋ Add activity</button>${routeURL ? `<a class="secondary-button" href="${escapeHTML(routeURL)}" target="_blank" rel="noopener" data-trip-route="day">Open day route</a>` : ""}<button class="secondary-button" type="button" data-day-action="share" data-day-number="${day.day}">Share day</button></div>
       </section>`;
     }).join("")}
   `;
@@ -1726,7 +1741,7 @@ window.addEventListener("online", updateConnectionState);
 window.addEventListener("offline", updateConnectionState);
 window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; installButton.hidden = false; trackAppEvent("pwa_install_prompt", { status: "available" }); });
 installButton.addEventListener("click", async () => { if (!deferredInstallPrompt) return toast("Use your browser menu to add this app to your home screen"); deferredInstallPrompt.prompt(); const choice = await deferredInstallPrompt.userChoice; trackAppEvent("pwa_install_result", { result: choice.outcome }); deferredInstallPrompt = null; installButton.hidden = true; });
-const APP_VERSION = "25";
+const APP_VERSION = "26";
 async function registerServiceWorker() {
   let refreshing = false;
   navigator.serviceWorker.addEventListener("controllerchange", () => {
