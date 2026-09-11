@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b1830" />
   <meta name="description" content="AI-first travel planning, live itineraries, maps, traveler insights, and safety tools." />
   <title>AI Travel Director</title>
-  <link rel="manifest" href="manifest.json?v=24" />
+  <link rel="manifest" href="manifest.json?v=27" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=24" />
+  <link rel="stylesheet" href="styles.css?v=27" />
 </head>
 <body>
   <div class="app-shell">
@@ -300,6 +300,28 @@
     </div>
   </dialog>
 
+  <dialog id="tripItemDialog" class="action-dialog" aria-labelledby="tripItemDialogTitle">
+    <form id="tripItemForm" class="action-dialog-shell">
+      <div class="section-heading compact">
+        <div><p class="eyebrow">TRIP DETAILS</p><h2 id="tripItemDialogTitle">Add an activity</h2></div>
+        <button id="closeTripItemDialog" class="round-button" type="button" aria-label="Close activity editor">×</button>
+      </div>
+      <input id="tripItemId" type="hidden" />
+      <input id="tripItemDay" type="hidden" />
+      <div class="two-column">
+        <label>Time<input id="tripItemTime" maxlength="30" placeholder="Example: 2:30 PM" required /></label>
+        <label>Estimated cost<input id="tripItemCost" type="number" min="0" step="1" inputmode="decimal" /></label>
+      </div>
+      <label>Activity<input id="tripItemName" maxlength="160" placeholder="Example: National history museum" required /></label>
+      <label>City or location<input id="tripItemLocation" maxlength="160" placeholder="Example: Prague, Czechia" /></label>
+      <label>Notes<textarea id="tripItemNote" maxlength="600" rows="3" placeholder="Reservation details, transportation notes, or why you want to visit"></textarea></label>
+      <div class="trip-item-form-actions">
+        <button id="deleteTripItem" class="secondary-button danger-button" type="button" hidden>Remove activity</button>
+        <button class="primary-button" type="submit">Save activity</button>
+      </div>
+    </form>
+  </dialog>
+
 
   <dialog id="onboardingDialog" class="onboarding-dialog" aria-labelledby="onboardingTitle">
     <div class="onboarding-shell">
@@ -333,7 +355,7 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="affiliate-config.js?v=24"></script>
-  <script type="module" src="app.js?v=24"></script>
+  <script src="affiliate-config.js?v=27"></script>
+  <script type="module" src="app.js?v=27"></script>
 </body>
 </html>

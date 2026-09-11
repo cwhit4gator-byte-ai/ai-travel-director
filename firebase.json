@@ -6,6 +6,7 @@
       "**/.*",
       "**/node_modules/**",
       "functions/**",
+      "tests/**",
       "README.md"
     ],
     "headers": [
