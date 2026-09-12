@@ -27,6 +27,12 @@ export class Element {
     listeners.push(listener);
     this.handlers.set(type, listeners);
   }
+  setAttribute(name, value) {
+    this.attributes[name] = String(value);
+  }
+  removeAttribute(name) {
+    delete this.attributes[name];
+  }
   async emit(type, event = {}) {
     for (const handler of this.handlers.get(type) || []) await handler({ target: this, preventDefault() {}, ...event });
   }
