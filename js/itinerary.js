@@ -1,10 +1,10 @@
-import { state } from "./state.js?v=39";
-import { escapeHTML, toast, trackAppError } from "./ui.js?v=39";
-import { scheduleSave } from "./persistence.js?v=39";
-import { trackAppEvent } from "../firebase-client.js?v=39";
-import { tripTotals, findTripItem, refreshTripOvernightLocations, communityTripItems, tripDateForDay, formatTripDate, normalizeISODate } from "./trip-model.js?v=39";
-import { dayRouteURL, currentLocationTransitURL, nextIncompleteTripStop, itemDirectionsURL } from "./directions.js?v=39";
-import { hydrateItineraryPhotos } from "./itinerary-photos.js?v=39";
+import { state } from "./state.js?v=40";
+import { escapeHTML, toast, trackAppError } from "./ui.js?v=40";
+import { scheduleSave } from "./persistence.js?v=40";
+import { trackAppEvent } from "../firebase-client.js?v=40";
+import { tripTotals, findTripItem, refreshTripOvernightLocations, communityTripItems, tripDateForDay, formatTripDate, normalizeISODate } from "./trip-model.js?v=40";
+import { dayRouteURL, currentLocationTransitURL, nextIncompleteTripStop, itemDirectionsURL } from "./directions.js?v=40";
+import { hydrateItineraryPhotos } from "./itinerary-photos.js?v=40";
 
 export function createItinerary({ showView, renderAll, bindViewLinks, replanCommunityPicks, updateTripHotelDates, renderToday }) {
   function dayShareText(day) {
