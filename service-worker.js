@@ -1,22 +1,22 @@
-const CACHE_NAME = "ai-travel-director-v32";
-const APP_FILES = ["./?app_version=32", "./index.html", "./styles.css?v=32", "./app.js?v=32", "./firebase-client.js?v=32", "./firebase-config.js", "./affiliate-config.js?v=32", "./maps.js?v=32", "./manifest.json?v=32", "./icon.svg",
-  "./js/community-data.js?v=32",
-  "./js/community.js?v=32",
-  "./js/directions.js?v=32",
-  "./js/explore.js?v=32",
-  "./js/home.js?v=32",
-  "./js/hotels.js?v=32",
-  "./js/itinerary.js?v=32",
-  "./js/onboarding.js?v=32",
-  "./js/persistence.js?v=32",
-  "./js/planner.js?v=32",
-  "./js/profile.js?v=32",
-  "./js/pwa.js?v=32",
-  "./js/safety.js?v=32",
-  "./js/state.js?v=32",
-  "./js/trip-model.js?v=32",
-  "./js/today.js?v=32",
-  "./js/ui.js?v=32"
+const CACHE_NAME = "ai-travel-director-v33";
+const APP_FILES = ["./?app_version=33", "./index.html", "./styles.css?v=33", "./app.js?v=33", "./firebase-client.js?v=33", "./firebase-config.js", "./affiliate-config.js?v=33", "./maps.js?v=33", "./manifest.json?v=33", "./icon.svg",
+  "./js/community-data.js?v=33",
+  "./js/community.js?v=33",
+  "./js/directions.js?v=33",
+  "./js/explore.js?v=33",
+  "./js/home.js?v=33",
+  "./js/hotels.js?v=33",
+  "./js/itinerary.js?v=33",
+  "./js/onboarding.js?v=33",
+  "./js/persistence.js?v=33",
+  "./js/planner.js?v=33",
+  "./js/profile.js?v=33",
+  "./js/pwa.js?v=33",
+  "./js/safety.js?v=33",
+  "./js/state.js?v=33",
+  "./js/trip-model.js?v=33",
+  "./js/today.js?v=33",
+  "./js/ui.js?v=33"
 ];
 
 self.addEventListener("install", event => {
@@ -40,6 +40,6 @@ self.addEventListener("fetch", event => {
         }
         return response;
       })
-      .catch(() => caches.match(event.request).then(cached => cached || (event.request.mode === "navigate" ? caches.match("./?app_version=32") : undefined)))
+      .catch(() => caches.match(event.request).then(cached => cached || (event.request.mode === "navigate" ? caches.match("./?app_version=33") : undefined)))
   );
 });

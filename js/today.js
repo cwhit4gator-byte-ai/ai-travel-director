@@ -1,8 +1,8 @@
-import { state } from "./state.js?v=32";
-import { escapeHTML } from "./ui.js?v=32";
-import { trackAppEvent } from "../firebase-client.js?v=32";
-import { tripDateForDay, formatTripDate, tripDayNumberForDate, tripOvernightStops } from "./trip-model.js?v=32";
-import { nextIncompleteTripStop, currentLocationDirectionsURL } from "./directions.js?v=32";
+import { state } from "./state.js?v=33";
+import { escapeHTML } from "./ui.js?v=33";
+import { trackAppEvent } from "../firebase-client.js?v=33";
+import { tripDateForDay, formatTripDate, tripDayNumberForDate, tripOvernightStops } from "./trip-model.js?v=33";
+import { nextIncompleteTripStop, currentLocationDirectionsURL } from "./directions.js?v=33";
 
 export function localISODate(now = new Date()) {
   const year = now.getFullYear();

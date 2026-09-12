@@ -40,14 +40,18 @@ Object.defineProperty(globalThis, "navigator", { configurable: true, value: { on
 // Mock only the external Maps boundary, leaving feature modules and data intact.
 const geocodedAddresses = [];
 const placeSearchQueries = [];
+const mapCenters = [];
+const mapZooms = [];
+let placeSearchFails = false;
 let markerCount = 0;
 let routeLineCount = 0;
 window.google = { maps: { importLibrary: async library => ({
-  maps: { Map: class { fitBounds() {} setCenter() {} setZoom() {} }, LatLngBounds: class { extend() {} }, Polyline: class { constructor() { routeLineCount++; } setMap() {} } },
+  maps: { Map: class { fitBounds() {} panTo(position) { mapCenters.push(position); } setCenter(position) { mapCenters.push(position); } setZoom(zoom) { mapZooms.push(zoom); } }, LatLngBounds: class { extend() {} }, Polyline: class { constructor() { routeLineCount++; } setMap() {} } },
   marker: { AdvancedMarkerElement: class { constructor() { markerCount++; } }, PinElement: class { constructor() { this.element = {}; } } },
   geocoding: { Geocoder: class { geocode({ address: query }, callback) { geocodedAddresses.push(query); const results = [{ formatted_address: query, geometry: { viewport: {}, location: {} }, address_components: [{ types: ["locality"], long_name: "Prague" }] }]; queueMicrotask(() => callback(results, "OK")); } } },
   places: { Place: { searchByText: async request => {
     placeSearchQueries.push(request.textQuery);
+    if (placeSearchFails) throw new Error("Places unavailable in test");
     const hotelSearch = request.includedType === "lodging";
     const names = hotelSearch ? ["Four Seasons Hotel Prague", "Prague Hotel Two", "Prague Hotel Three"] : ["Brno Castle", "Moravian Museum", "Old Town Hall"];
     return { places: names.map((name, index) => ({
@@ -236,11 +240,32 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.match(element("mapResultsHeading").textContent, /History near Brno/);
     assert.match(placeSearchQueries.at(-1), /historic sites and architecture in Brno/);
     assert.match(element("placeList").innerHTML, /Brno Castle/);
+    assert.match(element("placeList").innerHTML, />Show on map</);
     assert.match(element("placeList").innerHTML, /data-add-place/);
     assert.match(element("placeList").innerHTML, />Add to trip</);
     assert.match(element("placeList").innerHTML, />Directions</);
     assert.match(element("placeList").innerHTML, /data-place-location="1 Historic Square, Brno, Czechia"/);
     assert.match(element("mapLabelText").textContent, /3 History options in Brno/);
+    await element("placeList").emit("click", { target: target({ "data-show-place-index": "0" }) });
+    await settle();
+    assert.deepEqual(mapCenters.at(-1), { lat: 49.19, lng: 16.6 });
+    assert.equal(mapZooms.at(-1), 16);
+    assert.match(element("mapLabelText").textContent, /Selected · Brno Castle/);
+
+    placeSearchFails = true;
+    await document.querySelector('[data-map-filter="local restaurants no alcohol"]').emit("click");
+    await settle();
+    await settle();
+    assert.match(element("mapResultsHeading").textContent, /Food map searches near Brno/);
+    assert.match(element("placeList").innerHTML, /Top-rated local restaurants in Brno/);
+    assert.doesNotMatch(element("placeList").innerHTML, /Old town architecture walk/);
+    assert.match(element("placeList").innerHTML, />Show map search</);
+    assert.doesNotMatch(element("placeList").innerHTML, />Add to trip</);
+    await element("placeList").emit("click", { target: target({ "data-show-place-index": "0" }) });
+    await settle();
+    await settle();
+    assert.match(geocodedAddresses.at(-1), /Top-rated local restaurants in Brno/);
+    placeSearchFails = false;
     assert.match(element("communityMapList").innerHTML, /Charles Bridge/);
     state.trip.itinerary.splice(2, 2);
     state.trip.destination = originalDestination;

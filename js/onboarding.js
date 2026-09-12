@@ -1,5 +1,5 @@
-import { state } from "./state.js?v=32";
-import { trackAppEvent } from "../firebase-client.js?v=32";
+import { state } from "./state.js?v=33";
+import { trackAppEvent } from "../firebase-client.js?v=33";
 
 export function createOnboarding() {
   const ONBOARDING_KEY = "aitd_onboarding_v1";

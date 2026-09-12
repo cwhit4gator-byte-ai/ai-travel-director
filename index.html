@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b1830" />
   <meta name="description" content="AI-first travel planning, live itineraries, maps, traveler insights, and safety tools." />
   <title>AI Travel Director</title>
-  <link rel="manifest" href="manifest.json?v=32" />
+  <link rel="manifest" href="manifest.json?v=33" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=32" />
+  <link rel="stylesheet" href="styles.css?v=33" />
 </head>
 <body>
   <div class="app-shell">
@@ -139,7 +139,7 @@
           <div class="section-heading compact"><h2 id="mapResultsHeading">Places to consider</h2><span id="mapResultCount" class="result-count"></span></div>
           <div id="placeList" class="place-list"></div>
         </section>
-        <div class="map-frame-wrap">
+        <div id="mapFrameWrap" class="map-frame-wrap">
           <div id="mapCanvas" class="map-canvas" role="region" aria-label="Interactive Google map"></div>
           <iframe id="mapFallback" title="Google Map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen hidden></iframe>
           <div class="map-label"><span class="live-dot"></span><span id="mapLabelText">Exploring your next destination</span></div>
@@ -365,7 +365,7 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="affiliate-config.js?v=32"></script>
-  <script type="module" src="app.js?v=32"></script>
+  <script src="affiliate-config.js?v=33"></script>
+  <script type="module" src="app.js?v=33"></script>
 </body>
 </html>

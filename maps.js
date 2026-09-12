@@ -179,6 +179,19 @@ export async function renderGooglePlaceResultsMap(element, places) {
   return `${usable.length} options found`;
 }
 
+export async function focusGooglePlaceResult(element, place) {
+  if (!element) throw new Error("The map container is missing.");
+  const latitude = Number(place?.latitude);
+  const longitude = Number(place?.longitude);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) throw new Error("This place does not include a map location.");
+  if (!map) await renderGooglePlaceResultsMap(element, [place]);
+  const position = { lat: latitude, lng: longitude };
+  if (typeof map.panTo === "function") map.panTo(position);
+  else map.setCenter?.(position);
+  map.setZoom?.(16);
+  return place.name || place.address || "Selected place";
+}
+
 export async function searchNearbyPlaces(location, category = "top sights", maximum = 6) {
   await loadLibraries();
   const searchIntent = {

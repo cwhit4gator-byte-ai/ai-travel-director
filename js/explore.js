@@ -1,15 +1,18 @@
-import { state, saveLocalState } from "./state.js?v=32";
-import { escapeHTML, safeImageURL, toast } from "./ui.js?v=32";
-import { scheduleSave } from "./persistence.js?v=32";
-import { trackAppEvent } from "../firebase-client.js?v=32";
-import { renderGoogleMap, renderGooglePlaceResultsMap, renderGoogleRouteMap, searchNearbyPlaces } from "../maps.js?v=32";
-import { currentDestination, activityCatalog, tripRouteStops } from "./trip-model.js?v=32";
+import { state, saveLocalState } from "./state.js?v=33";
+import { escapeHTML, safeImageURL, toast } from "./ui.js?v=33";
+import { scheduleSave } from "./persistence.js?v=33";
+import { trackAppEvent } from "../firebase-client.js?v=33";
+import { focusGooglePlaceResult, renderGoogleMap, renderGooglePlaceResultsMap, renderGoogleRouteMap, searchNearbyPlaces } from "../maps.js?v=33";
+import { currentDestination, tripRouteStops } from "./trip-model.js?v=33";
 
 export function createExplore({ showView, renderHome, renderCommunityMapPicks }) {
   let mapRequestId = 0;
   let categoryRequestId = 0;
   let selectedRouteStop = "";
   let activeCategory = "";
+  let currentPlaceResults = [];
+  let currentResultsLocation = "";
+  let currentResultsArePlanningOnly = false;
 
   const categoryLabels = {
     "top sights": "Top sights",
@@ -44,6 +47,9 @@ export function createExplore({ showView, renderHome, renderCommunityMapPicks })
     section.hidden = true;
     document.getElementById("placeList").innerHTML = "";
     document.getElementById("mapResultCount").textContent = "";
+    currentPlaceResults = [];
+    currentResultsLocation = "";
+    currentResultsArePlanningOnly = false;
   }
 
   function setPlaceResultsLoading(category, location) {
@@ -63,15 +69,24 @@ export function createExplore({ showView, renderHome, renderCommunityMapPicks })
     return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`;
   }
 
+  function mapsSearchURL(place, location) {
+    const query = place.searchQuery || place.address || `${place.name}, ${location}`;
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+  }
+
   function renderPlaceOptions(places, category, location, { planningOnly = false } = {}) {
     const label = categoryLabels[category] || "Places";
     const section = document.getElementById("mapResultsSection");
-    document.getElementById("mapResultsHeading").textContent = `${label} near ${location}`;
+    currentPlaceResults = places;
+    currentResultsLocation = location;
+    currentResultsArePlanningOnly = planningOnly;
+    document.getElementById("mapResultsHeading").textContent = `${planningOnly ? `${label} map searches` : label} near ${location}`;
     document.getElementById("mapResultCount").textContent = `${places.length} options`;
     document.getElementById("placeList").innerHTML = places.map((place, index) => {
       const photoURL = safeImageURL(place.photoURL);
-      const rating = place.rating ? `${place.rating.toFixed(1)} ★${place.reviewCount ? ` · ${place.reviewCount.toLocaleString()} reviews` : ""}` : "Traveler planning option";
+      const rating = place.rating ? `${place.rating.toFixed(1)} ★${place.reviewCount ? ` · ${place.reviewCount.toLocaleString()} reviews` : ""}` : "Map search suggestion";
       const address = place.address || location;
+      const externalURL = planningOnly ? mapsSearchURL(place, location) : directionsURL({ ...place, location });
       return `<article class="place-card">
         ${photoURL ? `<img class="place-card-photo" src="${escapeHTML(photoURL)}" alt="" loading="lazy" />` : `<span class="place-pin" aria-hidden="true">${index + 1}</span>`}
         <div class="place-card-main">
@@ -79,23 +94,34 @@ export function createExplore({ showView, renderHome, renderCommunityMapPicks })
           <p>${escapeHTML(rating)}</p>
           <small>${escapeHTML(address)}</small>
           <div class="place-option-actions">
-            <button class="place-option-action primary" type="button" data-add-place="${escapeHTML(place.name)}" data-place-category="${escapeHTML(place.category || label)}" data-place-cost="${Number(place.cost || 0)}" data-place-location="${escapeHTML(address)}">Add to trip</button>
-            <a class="place-option-action" href="${escapeHTML(directionsURL({ ...place, location }))}" target="_blank" rel="noopener">Directions</a>
+            <button class="place-option-action primary" type="button" data-show-place-index="${index}">${planningOnly ? "Show map search" : "Show on map"}</button>
+            ${planningOnly ? "" : `<button class="place-option-action" type="button" data-add-place="${escapeHTML(place.name)}" data-place-category="${escapeHTML(place.category || label)}" data-place-cost="${Number(place.cost || 0)}" data-place-location="${escapeHTML(address)}">Add to trip</button>`}
+            <a class="place-option-action" href="${escapeHTML(externalURL)}" target="_blank" rel="noopener">${planningOnly ? "Open Maps" : "Directions"}</a>
           </div>
         </div>
       </article>`;
     }).join("");
-    if (planningOnly) document.getElementById("placeList").innerHTML += `<p class="field-note">Live place details are temporarily unavailable. These are planning suggestions; confirm details before visiting.</p>`;
+    if (planningOnly) document.getElementById("placeList").innerHTML += `<p class="field-note">Live place details are unavailable on this hostname. Choose a category-specific map search above, or open it in Google Maps.</p>`;
     section.hidden = false;
     renderCommunityMapPicks(location);
   }
 
   function planningFallback(category, location) {
-    const query = String(category || "").toLowerCase();
-    return [...activityCatalog]
-      .sort((a, b) => Number(`${b.name} ${b.category}`.toLowerCase().includes(query)) - Number(`${a.name} ${a.category}`.toLowerCase().includes(query)))
-      .slice(0, 4)
-      .map(place => ({ ...place, address: location, location }));
+    const options = {
+      "top sights": ["Top landmarks", "Best viewpoints", "Historic center highlights", "Popular attractions"],
+      "historic architecture": ["History museums", "Historic architecture", "Heritage sites", "Old town sights"],
+      "local restaurants no alcohol": ["Top-rated local restaurants", "Traditional local cuisine", "Food markets", "Quiet cafés"],
+      "train station": ["Main train station", "Public transit hubs", "Intercity bus station", "Accessible transit stops"],
+      "quiet parks": ["Quiet parks", "Botanical gardens", "Riverside walks", "Peaceful neighborhoods"]
+    }[category] || ["Top places", "Local highlights", "Nearby attractions", "Traveler favorites"];
+    return options.map((name, index) => ({
+      id: `planning-${index}`,
+      name: `${name} in ${location}`,
+      searchQuery: `${name} in ${location}`,
+      address: `Search area: ${location}`,
+      category: categoryLabels[category] || "Places",
+      location
+    }));
   }
 
   function prepareMapRequest(label, inputValue) {
@@ -200,6 +226,36 @@ export function createExplore({ showView, renderHome, renderCommunityMapPicks })
     }
   }
 
+  async function showPlaceOnMap(index) {
+    const place = currentPlaceResults[Number(index)];
+    if (!place) return;
+    document.getElementById("placeList").querySelectorAll("[data-show-place-index]").forEach(button => {
+      const selected = Number(button.dataset.showPlaceIndex) === Number(index);
+      button.closest(".place-card")?.classList.toggle("selected", selected);
+      button.textContent = selected ? "Shown on map" : (currentResultsArePlanningOnly ? "Show map search" : "Show on map");
+    });
+    const query = place.searchQuery || place.address || `${place.name}, ${currentResultsLocation}`;
+    const request = prepareMapRequest(`Showing ${place.name}…`, currentResultsLocation || selectedRouteStop || query);
+    document.getElementById("mapFrameWrap").scrollIntoView?.({ behavior: "smooth", block: "center" });
+    try {
+      if (currentResultsArePlanningOnly) {
+        const resolvedLabel = await renderGoogleMap(request.canvas, query);
+        if (request.requestId !== mapRequestId) return;
+        document.getElementById("mapLabelText").textContent = `Map search · ${resolvedLabel}`;
+      } else {
+        await focusGooglePlaceResult(request.canvas, place);
+        if (request.requestId !== mapRequestId) return;
+        document.getElementById("mapLabelText").textContent = `Selected · ${place.name}`;
+      }
+      request.fallback.hidden = true;
+      request.canvas.hidden = false;
+    } catch (error) {
+      console.warn("Selected place could not load in the interactive map; using embedded search.", error);
+      showMapFallback(request, query, `Map search · ${place.name}`);
+    }
+    trackAppEvent("map_place_selected", { category: activeCategory, planning_only: currentResultsArePlanningOnly });
+  }
+
   function addPlaceToTrip(name, category, cost, location) {
     if (!state.trip) {
       toast("Plan a destination before adding places");
@@ -225,7 +281,12 @@ export function createExplore({ showView, renderHome, renderCommunityMapPicks })
     else if (stops[index] && activeCategory) showCategoryOptions(activeCategory, stops[index]);
     else if (stops[index]) updateMap(stops[index]);
   });
-  document.getElementById("placeList").addEventListener("click", event => { const button = event.target.closest("[data-add-place]"); if (button) addPlaceToTrip(button.dataset.addPlace, button.dataset.placeCategory, button.dataset.placeCost, button.dataset.placeLocation); });
+  document.getElementById("placeList").addEventListener("click", event => {
+    const mapButton = event.target.closest("[data-show-place-index]");
+    if (mapButton) return showPlaceOnMap(mapButton.dataset.showPlaceIndex);
+    const addButton = event.target.closest("[data-add-place]");
+    if (addButton) addPlaceToTrip(addButton.dataset.addPlace, addButton.dataset.placeCategory, addButton.dataset.placeCost, addButton.dataset.placeLocation);
+  });
 
   document.getElementById("communityMapList").addEventListener("click", event => { const button = event.target.closest("[data-map-community]"); if (button) { activeCategory = ""; state.mapQuery = button.dataset.mapCommunity; updateMap(state.mapQuery); } });
   document.getElementById("locateMeButton").addEventListener("click", () => {
