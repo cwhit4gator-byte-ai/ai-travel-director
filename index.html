@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b1830" />
   <meta name="description" content="AI-first travel planning, live itineraries, maps, traveler insights, and safety tools." />
   <title>AI Travel Director</title>
-  <link rel="manifest" href="manifest.json?v=28" />
+  <link rel="manifest" href="manifest.json?v=30" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=28" />
+  <link rel="stylesheet" href="styles.css?v=30" />
 </head>
 <body>
   <div class="app-shell">
@@ -99,6 +99,7 @@
           <span class="ai-pulse" aria-hidden="true">✦</span>
           <div><strong>Your AI tour director</strong><p>Tell me the destination, dates or number of days, budget, and anything you want included.</p></div>
         </div>
+        <div id="plannerTripContext" class="planner-trip-context" role="status" hidden></div>
         <div class="prompt-chips" aria-label="Example prompts">
           <button class="prompt-chip">5 days of history and architecture under $1,500</button>
           <button class="prompt-chip">A relaxed public-transit trip with little walking</button>
@@ -360,7 +361,7 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="affiliate-config.js?v=28"></script>
-  <script type="module" src="app.js?v=28"></script>
+  <script src="affiliate-config.js?v=30"></script>
+  <script type="module" src="app.js?v=30"></script>
 </body>
 </html>

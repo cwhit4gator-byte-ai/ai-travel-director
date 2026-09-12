@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=28";
-import { escapeHTML, toast, trackAppError } from "./ui.js?v=28";
-import { scheduleSave } from "./persistence.js?v=28";
-import { trackAppEvent } from "../firebase-client.js?v=28";
-import { tripTotals, findTripItem, refreshTripOvernightLocations, communityTripItems, tripDateForDay, formatTripDate, normalizeISODate } from "./trip-model.js?v=28";
-import { dayRouteURL, currentLocationTransitURL, nextIncompleteTripStop, itemDirectionsURL } from "./directions.js?v=28";
+import { state } from "./state.js?v=30";
+import { escapeHTML, toast, trackAppError } from "./ui.js?v=30";
+import { scheduleSave } from "./persistence.js?v=30";
+import { trackAppEvent } from "../firebase-client.js?v=30";
+import { tripTotals, findTripItem, refreshTripOvernightLocations, communityTripItems, tripDateForDay, formatTripDate, normalizeISODate } from "./trip-model.js?v=30";
+import { dayRouteURL, currentLocationTransitURL, nextIncompleteTripStop, itemDirectionsURL } from "./directions.js?v=30";
 
 export function createItinerary({ showView, renderAll, bindViewLinks, replanCommunityPicks, updateTripHotelDates, renderToday }) {
   function dayShareText(day) {
@@ -82,7 +82,7 @@ export function createItinerary({ showView, renderAll, bindViewLinks, replanComm
             <article class="timeline-item ${item.done ? "done" : ""}" data-item-id="${item.id}">
               <div class="timeline-time">${escapeHTML(item.time)}</div>
               <div class="timeline-main"><strong>${escapeHTML(item.name)}</strong>${item.communityPostId ? '<span class="community-source">Community pick</span>' : ""}${item.location ? `<span class="timeline-location">⌖ ${escapeHTML(item.location)}</span>` : ""}<p>${escapeHTML(item.note || item.category || "Flexible plan item")}</p></div>
-              <div class="timeline-actions"><button class="mini-button" data-trip-action="toggle" aria-label="${item.done ? "Mark incomplete" : "Mark complete"}" title="${item.done ? "Mark incomplete" : "Mark complete"}">✓</button><a class="mini-button" href="${escapeHTML(itemDirectionsURL(day, index))}" target="_blank" rel="noopener" data-trip-route="item" aria-label="Directions ${index ? "from the previous stop" : "to this stop"}" title="Directions ${index ? "from previous stop" : "to this stop"}">↗</a><button class="mini-button" data-trip-action="edit" aria-label="Edit ${escapeHTML(item.name)}" title="Edit activity">✎</button>${index > 0 ? '<button class="mini-button" data-trip-action="up" aria-label="Move activity earlier" title="Move earlier">↑</button>' : ""}</div>
+              <div class="timeline-actions"><button class="mini-button activity-action" data-trip-action="toggle" aria-label="${item.done ? "Mark incomplete" : "Mark complete"}"><span aria-hidden="true">✓</span><span>${item.done ? "Undo" : "Complete"}</span></button><a class="mini-button activity-action" href="${escapeHTML(itemDirectionsURL(day, index))}" target="_blank" rel="noopener" data-trip-route="item" aria-label="Directions ${index ? "from the previous stop" : "to this stop"}"><span aria-hidden="true">↗</span><span>Directions</span></a><button class="mini-button activity-action" data-trip-action="edit" aria-label="Edit ${escapeHTML(item.name)}"><span aria-hidden="true">✎</span><span>Edit</span></button>${index > 0 ? '<button class="mini-button activity-action" data-trip-action="up" aria-label="Move activity earlier"><span aria-hidden="true">↑</span><span>Earlier</span></button>' : ""}</div>
             </article>
           `).join("")}
           <div class="day-tools"><button class="secondary-button" type="button" data-day-action="add" data-day-number="${day.day}">＋ Add activity</button>${routeURL ? `<a class="secondary-button" href="${escapeHTML(routeURL)}" target="_blank" rel="noopener" data-trip-route="day">Open day route</a>` : ""}<button class="secondary-button" type="button" data-day-action="share" data-day-number="${day.day}">Share day</button></div>

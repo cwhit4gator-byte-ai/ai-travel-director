@@ -115,6 +115,11 @@ test("app modules preserve startup and feature interactions", async t => {
     state.trip.itinerary.pop();
   });
   await t.test("activities can be added, edited, moved, deleted, and shared", async () => {
+    await navigate("itineraryView");
+    assert.match(dayHTML(1), />Complete</);
+    assert.match(dayHTML(1), />Directions</);
+    assert.match(dayHTML(1), />Edit</);
+    assert.match(dayHTML(1), />Earlier</);
     await element("itineraryContent").emit("click", { target: target({ "data-day-action": "add", "data-day-number": "1" }) });
     assert.equal(element("tripItemDialog").open, true);
     element("tripItemName").value = "Evening garden";
@@ -196,6 +201,19 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.equal(state.profile.name, "Test Traveler");
     assert.equal(state.profile.publicProfileVisible, false);
     assert.equal(state.currentView, "homeView");
+  });
+  await t.test("local planner recognizes the active itinerary without replacing it", async () => {
+    const activeTrip = state.trip;
+    await navigate("plannerView");
+    assert.equal(element("plannerTripContext").hidden, false);
+    assert.match(element("plannerTripContext").textContent, /Active trip: Czechia · 2 days/);
+    assert.equal(element("chatInput").placeholder, "Ask about or change your active trip");
+    assert.match(element("chatMessages").children[0].textContent, /active Czechia itinerary/);
+    element("chatInput").value = "Which activity is next?";
+    await element("chatForm").emit("submit", { submitter: target({}) });
+    await settle();
+    assert.equal(state.trip, activeTrip);
+    assert.equal(state.trip.destination, "Czechia");
   });
   await t.test("planner still creates a new local trip", async () => {
     await navigate("plannerView");
