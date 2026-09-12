@@ -1,17 +1,18 @@
-import { initializeCloud, observeAuth, trackAppEvent } from "./firebase-client.js?v=35";
-import { state, returningVisitor } from "./js/state.js?v=35";
-import { setCloudBanner, trackAppError } from "./js/ui.js?v=35";
-import { renderHome, renderRecommendations, initializeHome } from "./js/home.js?v=35";
-import { createPlanner } from "./js/planner.js?v=35";
-import { createHotels } from "./js/hotels.js?v=35";
-import { createItinerary } from "./js/itinerary.js?v=35";
-import { createCommunity } from "./js/community.js?v=35";
-import { createExplore } from "./js/explore.js?v=35";
-import { createProfile } from "./js/profile.js?v=35";
-import { initializeSafety } from "./js/safety.js?v=35";
-import { initializePWA } from "./js/pwa.js?v=35";
-import { createOnboarding } from "./js/onboarding.js?v=35";
-import { createToday } from "./js/today.js?v=35";
+import { initializeCloud, observeAuth, trackAppEvent } from "./firebase-client.js?v=36";
+import { state, returningVisitor } from "./js/state.js?v=36";
+import { setCloudBanner, trackAppError } from "./js/ui.js?v=36";
+import { renderHome, renderRecommendations, initializeHome } from "./js/home.js?v=36";
+import { createPlanner } from "./js/planner.js?v=36";
+import { createHotels } from "./js/hotels.js?v=36";
+import { createItinerary } from "./js/itinerary.js?v=36";
+import { createCommunity } from "./js/community.js?v=36";
+import { createExplore } from "./js/explore.js?v=36";
+import { createProfile } from "./js/profile.js?v=36";
+import { initializeSafety } from "./js/safety.js?v=36";
+import { initializePWA } from "./js/pwa.js?v=36";
+import { createOnboarding } from "./js/onboarding.js?v=36";
+import { createToday } from "./js/today.js?v=36";
+import { createSmartAdd } from "./js/smart-add.js?v=36";
 
 // Each feature owns its handlers. Only navigation and page refresh cross features.
 const planner = createPlanner({ renderAll });
@@ -19,7 +20,8 @@ const hotels = createHotels({ showView, renderAll, bindViewLinks });
 const today = createToday({ showView });
 const itinerary = createItinerary({ showView, renderAll, bindViewLinks, replanCommunityPicks: () => community.replanCommunityPicks(), updateTripHotelDates: hotels.updateTripHotelDates, renderToday: today.renderToday });
 const community = createCommunity({ showView, renderAll, renderItinerary: () => itinerary.renderItinerary() });
-const explore = createExplore({ showView, renderHome, renderCommunityMapPicks: community.renderCommunityMapPicks });
+const smartAdd = createSmartAdd({ showView, renderAll });
+const explore = createExplore({ renderCommunityMapPicks: community.renderCommunityMapPicks, openSmartAddDialog: smartAdd.openSmartAddDialog });
 const profile = createProfile({ showView, renderAll, renderCommunity: community.renderCommunity, renderRecommendations, hydrateCommunityActions: community.hydrateCommunityActions });
 const onboarding = createOnboarding();
 

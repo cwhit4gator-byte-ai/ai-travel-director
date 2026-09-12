@@ -10,7 +10,8 @@ A mobile-first personal travel app with AI trip planning, Google Maps exploratio
 - One trip start date that labels every itinerary day and keeps automatic hotel dates aligned per consecutive-city stop
 - A Today dashboard with the next unfinished stop, remaining activities, tonight's hotel, and Transit, Walk, and Drive shortcuts
 - An itinerary-aware AI planner that answers questions about the active trip and preserves unaffected plans when revising it
-- Interactive Google Maps search with category filters, directions, location lookup, and “add to trip” actions
+- Interactive Google Maps search with category filters, directions, location lookup, and numbered options matched to map pins
+- Smart Add to Trip recommendations with city-aware day selection, visit duration, travel buffers, conflict and duplicate warnings, and chronological insertion
 - Secure Firebase Authentication, Firestore sync, Storage uploads, and callable Functions adapters
 - Shared Community Insights feed with public posts, destination filters, pagination, helpful reactions, private reports, photo galleries, and Explore-map links
 - OpenAI-powered `planTrip` and `analyzeExperiencePhoto` Functions with local trip-planning fallback
@@ -31,7 +32,8 @@ A mobile-first personal travel app with AI trip planning, Google Maps exploratio
 | Installation and automatic updates | `js/pwa.js`, `service-worker.js` |
 | AI planning and trip data | `js/planner.js`, `js/trip-model.js` |
 | Home and current travel day | `js/home.js`, `js/today.js` |
-| Explore, account settings, safety, and onboarding | `js/explore.js`, `js/profile.js`, `js/safety.js`, `js/onboarding.js` |
+| Explore and smart itinerary insertion | `js/explore.js`, `js/smart-add.js` |
+| Account settings, safety, and onboarding | `js/profile.js`, `js/safety.js`, `js/onboarding.js` |
 | Shared state, persistence, and UI helpers | `js/state.js`, `js/persistence.js`, `js/ui.js` |
 | External services | `firebase-client.js`, `maps.js` |
 
