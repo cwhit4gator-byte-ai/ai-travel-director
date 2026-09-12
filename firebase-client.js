@@ -11,7 +11,7 @@ const ANALYTICS_EVENTS = new Set([
   "community_viewed_on_map", "profile_saved", "sign_in", "sign_out", "location_permission_prompted",
   "location_permission_result", "app_error", "pwa_install_prompt", "pwa_install_result",
   "trip_route_opened", "trip_day_shared", "trip_activity_added", "trip_activity_edited", "trip_activity_removed",
-  "trip_dates_updated", "today_route_opened"
+  "trip_dates_updated", "today_route_opened", "trip_updated"
 ]);
 const ANALYTICS_PARAMETERS = new Set(["view_name", "source", "method", "result", "status", "step", "returning", "display_mode", "online"]);
 

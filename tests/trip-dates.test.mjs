@@ -5,7 +5,7 @@ import { memoryStorage } from "./support/dom.mjs";
 globalThis.localStorage = memoryStorage();
 Object.defineProperty(globalThis, "navigator", { configurable: true, value: { language: "en-US" } });
 
-const version = "28";
+const version = "29";
 const model = await import(new URL(`../js/trip-model.js?v=${version}`, import.meta.url));
 const hotels = await import(new URL(`../js/hotels.js?v=${version}`, import.meta.url));
 const today = await import(new URL(`../js/today.js?v=${version}`, import.meta.url));
@@ -53,4 +53,43 @@ test("Today advances to the current or next unfinished itinerary day", () => {
   assert.equal(today.tripTodayContext(trip, "2027-04-10").day.day, 2);
   assert.equal(today.tripTodayContext(trip, "2027-04-11").phase, "today");
   assert.equal(today.tripTodayContext(trip, "2027-04-14").phase, "overdue");
+});
+
+test("AI context excludes managed hotels and revisions preserve active trip details", () => {
+  const activeTrip = {
+    destination: "Czechia",
+    days: 2,
+    startDate: "2027-04-10",
+    budget: 1500,
+    hotelStayDates: { "Prague::1-2": { checkIn: "2027-04-10", checkOut: "2027-04-12", manualDates: true } },
+    hotelSelections: { "Prague::1-2": { name: "Hotel One" } },
+    itinerary: [
+      { day: 1, title: "Prague — history", overnightLocation: "Prague", items: [
+        { id: "museum", name: "National Museum", location: "Prague", time: "9:00 AM", category: "History", done: true },
+        { id: "hotel", name: "Hotel One", location: "Prague", time: "Overnight", category: "Hotel", hotelStopId: "Prague::1-2", done: false }
+      ] },
+      { day: 2, title: "Prague — architecture", overnightLocation: "Prague", items: [{ id: "castle", name: "Prague Castle", location: "Prague", done: false }] }
+    ]
+  };
+  const context = model.tripForAIContext(activeTrip);
+  assert.equal(context.destination, "Czechia");
+  assert.equal(context.itinerary[0].items.length, 1);
+  assert.equal(context.itinerary[0].items[0].done, true);
+
+  const revised = {
+    destination: "Czechia",
+    days: 2,
+    startDate: "",
+    itinerary: [
+      { day: 1, title: "Prague — history", overnightLocation: "Prague", items: [{ id: "new-museum", name: "National Museum", location: "Prague", done: false }] },
+      { day: 2, title: "Prague — quieter architecture", overnightLocation: "Prague", items: [{ id: "new-castle", name: "Prague Castle", location: "Prague", done: false }] }
+    ]
+  };
+  model.preserveActiveTripDetails(revised, activeTrip);
+  assert.equal(revised.startDate, "2027-04-10");
+  assert.equal(revised.itinerary[0].items[0].id, "museum");
+  assert.equal(revised.itinerary[0].items[0].done, true);
+  assert.equal(revised.itinerary[0].items[1].name, "Hotel One");
+  assert.equal(revised.hotelSelections["Prague::1-2"].name, "Hotel One");
+  assert.equal(revised.hotelStayDates["Prague::1-2"].manualDates, true);
 });

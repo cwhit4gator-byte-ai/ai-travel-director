@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=28";
+import { state } from "./state.js?v=29";
 
 export const activityCatalog = [
   { name: "Old town architecture walk", category: "Architecture", time: "9:00 AM", cost: 0, icon: "⌂", note: "Begin early for quiet streets and softer light." },
@@ -153,6 +153,60 @@ export function normalizeAITrip(result, sourceRequest) {
     return { day: Number(day.day || dayIndex + 1), title: String(day.title || `Day ${dayIndex + 1}`), overnightLocation, items };
   });
   return { destination, days: Math.max(1, Math.min(Number(raw?.days || days.length || parseDays(sourceRequest)), 10)), budget: Number(raw?.budget || parseBudget(sourceRequest)), startDate: normalizeISODate(raw?.startDate) || parseTripStartDate(sourceRequest), sourceRequest, generatedBy: "openai", createdAt: new Date().toISOString(), overnightLocations: [...new Set(itinerary.map(day => day.overnightLocation).filter(Boolean))], itinerary };
+}
+
+export function tripForAIContext(trip = state.trip) {
+  if (!trip) return null;
+  return {
+    destination: String(trip.destination || "").slice(0, 160),
+    days: Math.max(1, Math.min(Number(trip.days || trip.itinerary?.length || 1), 10)),
+    startDate: normalizeISODate(trip.startDate),
+    budget: Math.max(0, Number(trip.budget || 0)),
+    overnightLocations: (trip.overnightLocations || []).slice(0, 10).map(value => String(value).slice(0, 160)),
+    itinerary: (trip.itinerary || []).slice(0, 10).map((day, index) => ({
+      day: Number(day.day || index + 1),
+      title: String(day.title || `Day ${index + 1}`).slice(0, 160),
+      overnightLocation: String(day.overnightLocation || "").slice(0, 160),
+      items: (day.items || []).filter(item => item.category !== "Hotel").slice(0, 6).map(item => ({
+        time: String(item.time || "").slice(0, 30),
+        name: String(item.name || "").slice(0, 160),
+        location: String(item.location || "").slice(0, 200),
+        note: String(item.note || "").slice(0, 400),
+        category: String(item.category || "").slice(0, 80),
+        cost: Math.max(0, Number(item.cost || 0)),
+        done: Boolean(item.done)
+      }))
+    }))
+  };
+}
+
+function comparableItemText(value) {
+  return String(value || "").toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+}
+
+export function preserveActiveTripDetails(nextTrip, currentTrip) {
+  if (!nextTrip || !currentTrip) return nextTrip;
+  nextTrip.startDate ||= normalizeISODate(currentTrip.startDate);
+  nextTrip.hotelStayDates = currentTrip.hotelStayDates || {};
+  nextTrip.hotelSelections = currentTrip.hotelSelections || {};
+  const existingItems = (currentTrip.itinerary || []).flatMap(day => (day.items || []).filter(item => item.category !== "Hotel"));
+  const exactItems = new Map(existingItems.map(item => [`${comparableItemText(item.name)}|${comparableItemText(item.location)}`, item]));
+  const namedItems = new Map(existingItems.map(item => [comparableItemText(item.name), item]));
+  (nextTrip.itinerary || []).forEach(day => {
+    (day.items || []).forEach(item => {
+      const match = exactItems.get(`${comparableItemText(item.name)}|${comparableItemText(item.location)}`) || namedItems.get(comparableItemText(item.name));
+      if (!match) return;
+      item.id = match.id || item.id;
+      item.done = Boolean(match.done);
+      if (match.communityPostId) item.communityPostId = match.communityPostId;
+    });
+    const previousDay = (currentTrip.itinerary || []).find(previous => Number(previous.day) === Number(day.day));
+    const hotelItems = (previousDay?.items || []).filter(item => item.category === "Hotel" && comparableItemText(previousDay.overnightLocation) === comparableItemText(day.overnightLocation));
+    hotelItems.forEach(item => {
+      if (!(day.items || []).some(candidate => candidate.category === "Hotel" && candidate.hotelStopId === item.hotelStopId)) day.items.push({ ...item });
+    });
+  });
+  return nextTrip;
 }
 
 export function tripTotals() {

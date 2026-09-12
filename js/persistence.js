@@ -1,6 +1,6 @@
-import { state, saveLocalState } from "./state.js?v=28";
-import { saveCloudState } from "../firebase-client.js?v=28";
-import { setCloudBanner, toast } from "./ui.js?v=28";
+import { state, saveLocalState } from "./state.js?v=29";
+import { saveCloudState } from "../firebase-client.js?v=29";
+import { setCloudBanner, toast } from "./ui.js?v=29";
 
 function cloudPayload() {
   return {

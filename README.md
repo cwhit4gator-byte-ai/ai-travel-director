@@ -5,10 +5,11 @@ A mobile-first personal travel app with AI trip planning, Google Maps exploratio
 ## Included in this version
 
 - Human-friendly Home, Plan, Explore, Trip, Safety, Experience, and Profile views
-- Editable daily itineraries with stop-to-stop directions, full-day routes, completion progress, and native sharing
+- Editable daily itineraries with clearly labeled activity actions, stop-to-stop directions, full-day routes, completion progress, and native sharing
 - Current-location transit links that advance to the next unfinished stop as activities are completed
 - One trip start date that labels every itinerary day and keeps automatic hotel dates aligned per consecutive-city stop
 - A Today dashboard with the next unfinished stop, remaining activities, tonight's hotel, and Transit, Walk, and Drive shortcuts
+- An itinerary-aware AI planner that answers questions about the active trip and preserves unaffected plans when revising it
 - Interactive Google Maps search with category filters, directions, location lookup, and “add to trip” actions
 - Secure Firebase Authentication, Firestore sync, Storage uploads, and callable Functions adapters
 - Shared Community Insights feed with public posts, destination filters, pagination, helpful reactions, private reports, photo galleries, and Explore-map links

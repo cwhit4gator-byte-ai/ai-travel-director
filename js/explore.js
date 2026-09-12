@@ -1,9 +1,9 @@
-import { state, saveLocalState } from "./state.js?v=28";
-import { escapeHTML, toast } from "./ui.js?v=28";
-import { scheduleSave } from "./persistence.js?v=28";
-import { trackAppEvent } from "../firebase-client.js?v=28";
-import { renderGoogleMap } from "../maps.js?v=28";
-import { currentDestination, activityCatalog } from "./trip-model.js?v=28";
+import { state, saveLocalState } from "./state.js?v=29";
+import { escapeHTML, toast } from "./ui.js?v=29";
+import { scheduleSave } from "./persistence.js?v=29";
+import { trackAppEvent } from "../firebase-client.js?v=29";
+import { renderGoogleMap } from "../maps.js?v=29";
+import { currentDestination, activityCatalog } from "./trip-model.js?v=29";
 
 export function createExplore({ showView, renderHome, renderCommunityMapPicks }) {
   let mapRequestId = 0;
