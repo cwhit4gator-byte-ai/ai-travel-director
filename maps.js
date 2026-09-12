@@ -212,19 +212,59 @@ export async function searchNearbyPlaces(location, category = "top sights", maxi
     }),
     watchForAuthenticationFailure()
   ]);
-  return (response.places || []).map(place => ({
-    id: place.id || "",
-    name: place.displayName || "Place",
-    address: place.formattedAddress || place.shortFormattedAddress || location,
-    category: place.primaryTypeDisplayName || searchIntent,
-    rating: Number(place.rating || 0),
-    reviewCount: Number(place.userRatingCount || 0),
-    priceLevel: String(place.priceLevel || ""),
-    latitude: typeof place.location?.lat === "function" ? place.location.lat() : Number(place.location?.lat),
-    longitude: typeof place.location?.lng === "function" ? place.location.lng() : Number(place.location?.lng),
-    photoURL: place.photos?.[0]?.getURI ? place.photos[0].getURI({ maxWidth: 400, maxHeight: 300 }) : "",
-    mapsURL: place.googleMapsURI || ""
-  })).filter(place => place.id && place.name);
+  return (response.places || []).map(place => {
+    const photo = place.photos?.[0];
+    const attributions = (photo?.authorAttributions || []).filter(item => item?.displayName);
+    return {
+      id: place.id || "",
+      name: place.displayName || "Place",
+      address: place.formattedAddress || place.shortFormattedAddress || location,
+      category: place.primaryTypeDisplayName || searchIntent,
+      rating: Number(place.rating || 0),
+      reviewCount: Number(place.userRatingCount || 0),
+      priceLevel: String(place.priceLevel || ""),
+      latitude: typeof place.location?.lat === "function" ? place.location.lat() : Number(place.location?.lat),
+      longitude: typeof place.location?.lng === "function" ? place.location.lng() : Number(place.location?.lng),
+      photoURL: photo?.getURI ? photo.getURI({ maxWidth: 400, maxHeight: 300 }) : "",
+      heroPhotoURL: photo?.getURI ? photo.getURI({ maxWidth: 1400, maxHeight: 900 }) : "",
+      photoAttribution: attributions.length ? { displayName: attributions.map(item => String(item.displayName)).join(", "), uri: String(attributions.find(item => item.uri)?.uri || "") } : null,
+      mapsURL: place.googleMapsURI || ""
+    };
+  }).filter(place => place.id && place.name);
+}
+
+export async function searchPlaceDetails(query, maximum = 3) {
+  const normalizedQuery = String(query || "").trim();
+  if (!normalizedQuery) return [];
+  await loadLibraries();
+  const { Place } = await window.google.maps.importLibrary("places");
+  const response = await Promise.race([
+    Place.searchByText({
+      textQuery: normalizedQuery,
+      fields: ["id", "displayName", "formattedAddress", "shortFormattedAddress", "location", "rating", "userRatingCount", "photos", "googleMapsURI", "primaryTypeDisplayName"],
+      maxResultCount: Math.max(1, Math.min(5, Number(maximum) || 3)),
+      language: "en-US"
+    }),
+    watchForAuthenticationFailure()
+  ]);
+  return (response.places || []).map(place => {
+    const photo = place.photos?.[0];
+    const attributions = (photo?.authorAttributions || []).filter(item => item?.displayName);
+    return {
+      id: place.id || "",
+      name: place.displayName || normalizedQuery,
+      address: place.formattedAddress || place.shortFormattedAddress || normalizedQuery,
+      category: place.primaryTypeDisplayName || "Place",
+      rating: Number(place.rating || 0),
+      reviewCount: Number(place.userRatingCount || 0),
+      latitude: typeof place.location?.lat === "function" ? place.location.lat() : Number(place.location?.lat),
+      longitude: typeof place.location?.lng === "function" ? place.location.lng() : Number(place.location?.lng),
+      photoURL: photo?.getURI ? photo.getURI({ maxWidth: 900, maxHeight: 600 }) : "",
+      heroPhotoURL: photo?.getURI ? photo.getURI({ maxWidth: 1400, maxHeight: 900 }) : "",
+      photoAttribution: attributions.length ? { displayName: attributions.map(item => String(item.displayName)).join(", "), uri: String(attributions.find(item => item.uri)?.uri || "") } : null,
+      mapsURL: place.googleMapsURI || ""
+    };
+  }).filter(place => place.id && place.name);
 }
 
 

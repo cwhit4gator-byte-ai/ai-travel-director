@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=36";
-import { escapeHTML, safeImageURL, toast } from "./ui.js?v=36";
-import { scheduleSave } from "./persistence.js?v=36";
-import { loadCommunityFeed, publishCommunityExperience, loadCommunityActions, setCommunityHelpful, reportCommunityExperience, loadPublicTravelerProfile, requestAITrip, uploadExperiencePhotos, requestPhotoAnalysis, trackAppEvent } from "../firebase-client.js?v=36";
-import { normalizeAITrip, communityTripItems } from "./trip-model.js?v=36";
-import { communityItems, communityExperienceById } from "./community-data.js?v=36";
+import { state } from "./state.js?v=37";
+import { escapeHTML, safeImageURL, toast } from "./ui.js?v=37";
+import { scheduleSave } from "./persistence.js?v=37";
+import { loadCommunityFeed, publishCommunityExperience, loadCommunityActions, setCommunityHelpful, reportCommunityExperience, loadPublicTravelerProfile, requestAITrip, uploadExperiencePhotos, requestPhotoAnalysis, trackAppEvent } from "../firebase-client.js?v=37";
+import { normalizeAITrip, communityTripItems } from "./trip-model.js?v=37";
+import { communityItems, communityExperienceById } from "./community-data.js?v=37";
 
 export function createCommunity({ showView, renderAll, renderItinerary }) {
   function filteredCommunityItems() {
@@ -237,8 +237,10 @@ export function createCommunity({ showView, renderAll, renderItinerary }) {
       id: crypto.randomUUID(),
       time: "Flexible",
       name: String(experience.place || "Community recommendation"),
+      location: String(experience.place || ""),
       note: String(experience.text || "Recommended by a traveler in the community."),
       category: "Community pick",
+      photoURL: (Array.isArray(experience.photoURLs) ? experience.photoURLs : []).map(safeImageURL).find(Boolean) || "",
       cost: 0,
       done: false,
       communityPostId: String(experience.id),

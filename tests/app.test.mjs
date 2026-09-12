@@ -53,7 +53,8 @@ window.google = { maps: { importLibrary: async library => ({
     placeSearchQueries.push(request.textQuery);
     if (placeSearchFails) throw new Error("Places unavailable in test");
     const hotelSearch = request.includedType === "lodging";
-    const names = hotelSearch ? ["Four Seasons Hotel Prague", "Prague Hotel Two", "Prague Hotel Three"] : ["Brno Castle", "Moravian Museum", "Old Town Hall"];
+    const placeCity = request.textQuery.match(/ in (.+)$/)?.[1] || "Brno";
+    const names = hotelSearch ? ["Four Seasons Hotel Prague", "Prague Hotel Two", "Prague Hotel Three"] : [`${placeCity} Castle`, `${placeCity} Museum`, `${placeCity} Old Town Hall`];
     return { places: names.map((name, index) => ({
       id: `${hotelSearch ? "hotel" : "place"}-${index + 1}`,
       displayName: name,
@@ -61,7 +62,11 @@ window.google = { maps: { importLibrary: async library => ({
       rating: 4.5,
       userRatingCount: 100 + index,
       primaryTypeDisplayName: hotelSearch ? "Hotel" : "Historical landmark",
-      location: { lat: () => 49.19 + index * .01, lng: () => 16.60 + index * .01 }
+      location: { lat: () => 49.19 + index * .01, lng: () => 16.60 + index * .01 },
+      photos: [{
+        getURI: ({ maxWidth = 0, maxHeight = 0 }) => `https://example.test/${encodeURIComponent(name)}-${maxWidth}x${maxHeight}.jpg`,
+        authorAttributions: [{ displayName: "Test Photographer", uri: "https://example.test/photographer" }]
+      }]
     })) };
   } } }
 }[library]) } };
@@ -79,10 +84,16 @@ console.error = originalError;
 const { state } = await import(moduleURL("state"));
 const directions = await import(moduleURL("directions"));
 const model = await import(moduleURL("trip-model"));
+const featuredPlaceModel = await import(moduleURL("featured-place"));
+const itineraryPhotoModel = await import(moduleURL("itinerary-photos"));
 const smartAddModel = await import(moduleURL("smart-add"));
 const ui = await import(moduleURL("ui"));
 const element = id => document.getElementById(id);
-const navigate = async view => document.querySelector(`[data-view-link="${view}"]`).emit("click");
+const navigate = async view => {
+  const links = document.querySelectorAll(`[data-view-link="${view}"]`);
+  const navigationLink = links.find(link => link.classList.contains("nav-item")) || links[0];
+  return navigationLink.emit("click");
+};
 const target = (attributes, parent) => new Element("button", attributes, parent);
 const itineraryHTML = () => element("itineraryContent").innerHTML;
 const dayHTML = number => itineraryHTML().split(`id="tripDay${number}"`)[1].split("</section>")[0];
@@ -90,9 +101,18 @@ const toggle = async id => element("itineraryContent").emit("click", { target: t
 const transitURL = number => new URL(dayHTML(number).match(/class="day-transit-button" href="([^"]+)"/)[1].replaceAll("&amp;", "&"));
 
 test("app modules preserve startup and feature interactions", async t => {
-  await t.test("startup loads all modules, uses existing saved data, and binds handlers once", () => {
+  await t.test("startup loads all modules, uses existing saved data, and binds handlers once", async () => {
+    await settle();
     assert.equal(state.trip.destination, "Czechia");
     assert.match(element("homeHeading").textContent, /Czechia/);
+    assert.equal(element("startPlanningButton").textContent, "Ask AI about this trip");
+    assert.equal(element("tripHeroFeatured").hidden, false);
+    assert.equal(element("tripHeroPlace").textContent, "Prague Old Town Hall");
+    assert.match(element("tripHeroImage").src, /1400x900/);
+    assert.equal(element("tripHeroAttribution").textContent, "Photo: Test Photographer");
+    assert.equal(element("featuredPlaceButton").textContent, "View featured place");
+    assert.match(itineraryHTML(), /data-itinerary-photo="true"/);
+    assert.match(itineraryHTML(), /class="timeline-photo"/);
     assert.match(element("communityList").innerHTML, /Charles Bridge/);
     assert.equal(element("itineraryContent").handlers.get("click").length, 1);
     assert.equal(element("hotelList").handlers.get("click").length, 1);
@@ -368,4 +388,49 @@ test("Smart Add scheduling helpers select the least crowded matching city and ke
   const added = { id: "added", name: place.name, location: place.address, time: "2:00 PM" };
   smartAddModel.insertTripItemChronologically(plan.itinerary[1], added);
   assert.deepEqual(plan.itinerary[1].items.map(item => item.id), ["added", "late"]);
+});
+
+test("featured destination banner follows the active trip day and ranks popular photographed places", () => {
+  const route = {
+    destination: "Prague → Brno → Vienna",
+    startDate: "2027-07-01",
+    itinerary: [
+      { day: 1, overnightLocation: "Prague", items: [] },
+      { day: 2, overnightLocation: "Brno", items: [] },
+      { day: 3, overnightLocation: "Vienna", items: [] }
+    ]
+  };
+  assert.equal(featuredPlaceModel.featuredTripLocation(route, new Date(2027, 6, 2, 12)), "Brno");
+  assert.equal(featuredPlaceModel.featuredTripLocation(route, new Date(2027, 5, 20, 12)), "Prague");
+  const ranked = featuredPlaceModel.rankFeaturedPlaces([
+    { name: "No photo", rating: 5, reviewCount: 100000 },
+    { name: "Local favorite", rating: 4.9, reviewCount: 800, heroPhotoURL: "https://example.test/local.jpg" },
+    { name: "Popular landmark", rating: 4.7, reviewCount: 18000, heroPhotoURL: "https://example.test/popular.jpg" }
+  ]);
+  assert.deepEqual(ranked.map(place => place.name), ["Popular landmark", "Local favorite"]);
+  const fallback = featuredPlaceModel.selectWikimediaPage([
+    { index: 1, title: "List of landmarks", pageimage: "List.jpg", thumbnail: { source: "https://example.test/list.jpg" } },
+    { index: 3, title: "Later landmark", pageimage: "Later.jpg", thumbnail: { source: "https://example.test/later.jpg" } },
+    { index: 2, title: "City landmark", pageimage: "City.jpg", thumbnail: { source: "https://example.test/city.jpg" } }
+  ]);
+  assert.equal(fallback.title, "City landmark");
+});
+
+test("itinerary photo lookup uses the activity and its overnight location", () => {
+  assert.equal(
+    itineraryPhotoModel.itineraryPhotoKey({ name: "Prague Castle", location: "Hradčany, Prague" }, { overnightLocation: "Prague" }),
+    "prague castle | hradčany, prague"
+  );
+  assert.equal(
+    itineraryPhotoModel.itineraryPhotoKey({ name: "Evening walk" }, { overnightLocation: "Vienna" }),
+    "evening walk | vienna"
+  );
+  assert.deepEqual(
+    featuredPlaceModel.activityPhotoSearch({ name: "Central market lunch", category: "Local culture" }, { overnightLocation: "Prague" }),
+    { query: "Prague cuisine", terms: ["cuisine", "food", "market"] }
+  );
+  assert.equal(
+    featuredPlaceModel.activityPhotoSearch({ name: "Prague Castle", location: "Hradčany, Prague" }, { overnightLocation: "Prague" }).query,
+    "Prague Castle, Hradčany, Prague"
+  );
 });

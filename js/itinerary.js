@@ -1,9 +1,10 @@
-import { state } from "./state.js?v=36";
-import { escapeHTML, toast, trackAppError } from "./ui.js?v=36";
-import { scheduleSave } from "./persistence.js?v=36";
-import { trackAppEvent } from "../firebase-client.js?v=36";
-import { tripTotals, findTripItem, refreshTripOvernightLocations, communityTripItems, tripDateForDay, formatTripDate, normalizeISODate } from "./trip-model.js?v=36";
-import { dayRouteURL, currentLocationTransitURL, nextIncompleteTripStop, itemDirectionsURL } from "./directions.js?v=36";
+import { state } from "./state.js?v=37";
+import { escapeHTML, toast, trackAppError } from "./ui.js?v=37";
+import { scheduleSave } from "./persistence.js?v=37";
+import { trackAppEvent } from "../firebase-client.js?v=37";
+import { tripTotals, findTripItem, refreshTripOvernightLocations, communityTripItems, tripDateForDay, formatTripDate, normalizeISODate } from "./trip-model.js?v=37";
+import { dayRouteURL, currentLocationTransitURL, nextIncompleteTripStop, itemDirectionsURL } from "./directions.js?v=37";
+import { hydrateItineraryPhotos } from "./itinerary-photos.js?v=37";
 
 export function createItinerary({ showView, renderAll, bindViewLinks, replanCommunityPicks, updateTripHotelDates, renderToday }) {
   function dayShareText(day) {
@@ -79,9 +80,10 @@ export function createItinerary({ showView, renderAll, bindViewLinks, replanComm
           <div class="day-meta"><span>⌖ ${escapeHTML(day.overnightLocation || state.trip.destination)}</span><span>${dayCost.toLocaleString("en-US")} estimated</span></div>
           ${transitURL ? `<a class="day-transit-button" href="${escapeHTML(transitURL)}" target="_blank" rel="noopener" data-trip-route="transit" aria-label="Check transit from my location to ${escapeHTML(nextStopName)}"><span class="day-transit-icon" aria-hidden="true">↗</span><span><strong>Check transit from my location</strong><small>Next stop: ${escapeHTML(nextStopName)}</small></span></a>` : day.items?.length ? '<p class="day-transit-complete" role="status"><span aria-hidden="true">✓</span> All stops complete for this day</p>' : ""}
           ${(day.items || []).map((item, index) => `
-            <article class="timeline-item ${item.done ? "done" : ""}" data-item-id="${item.id}">
+            <article class="timeline-item ${item.done ? "done" : ""}" data-item-id="${escapeHTML(item.id)}" data-itinerary-photo="true">
+              <img class="timeline-photo" alt="" loading="lazy" hidden />
               <div class="timeline-time">${escapeHTML(item.time)}</div>
-              <div class="timeline-main"><strong>${escapeHTML(item.name)}</strong>${item.communityPostId ? '<span class="community-source">Community pick</span>' : ""}${item.location ? `<span class="timeline-location">⌖ ${escapeHTML(item.location)}</span>` : ""}<p>${escapeHTML(item.note || item.category || "Flexible plan item")}</p></div>
+              <div class="timeline-main"><strong>${escapeHTML(item.name)}</strong>${item.communityPostId ? '<span class="community-source">Community pick</span>' : ""}${item.location ? `<span class="timeline-location">⌖ ${escapeHTML(item.location)}</span>` : ""}<p>${escapeHTML(item.note || item.category || "Flexible plan item")}</p><a class="timeline-photo-credit" target="_blank" rel="noopener noreferrer" hidden></a></div>
               <div class="timeline-actions"><button class="mini-button activity-action" data-trip-action="toggle" aria-label="${item.done ? "Mark incomplete" : "Mark complete"}"><span aria-hidden="true">✓</span><span>${item.done ? "Undo" : "Complete"}</span></button><a class="mini-button activity-action" href="${escapeHTML(itemDirectionsURL(day, index))}" target="_blank" rel="noopener" data-trip-route="item" aria-label="Directions ${index ? "from the previous stop" : "to this stop"}"><span aria-hidden="true">↗</span><span>Directions</span></a><button class="mini-button activity-action" data-trip-action="edit" aria-label="Edit ${escapeHTML(item.name)}"><span aria-hidden="true">✎</span><span>Edit</span></button>${index > 0 ? '<button class="mini-button activity-action" data-trip-action="up" aria-label="Move activity earlier"><span aria-hidden="true">↑</span><span>Earlier</span></button>' : ""}</div>
             </article>
           `).join("")}
@@ -89,6 +91,7 @@ export function createItinerary({ showView, renderAll, bindViewLinks, replanComm
         </section>`;
       }).join("")}
     `;
+    void hydrateItineraryPhotos(content);
   }
 
   document.getElementById("itineraryContent").addEventListener("click", event => {

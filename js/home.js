@@ -1,6 +1,6 @@
-import { state } from "./state.js?v=36";
-import { escapeHTML, normalizeInterests, toast } from "./ui.js?v=36";
-import { tripDateForDay, formatTripDate } from "./trip-model.js?v=36";
+import { state } from "./state.js?v=37";
+import { escapeHTML, normalizeInterests, toast } from "./ui.js?v=37";
+import { tripDateForDay, formatTripDate } from "./trip-model.js?v=37";
 
 export function renderHome() {
   const title = document.getElementById("homeHeading");
@@ -16,10 +16,12 @@ export function renderHome() {
     title.textContent = state.trip.destination;
     summary.textContent = `${dateSummary}${state.trip.days}-day working itinerary · $${Number(state.trip.budget || 0).toLocaleString("en-US")} budget · no bookings made`;
     metric.textContent = `${state.trip.days} days in ${state.trip.destination}`;
+    document.getElementById("startPlanningButton").textContent = "Ask AI about this trip";
   } else {
     title.textContent = "Where should we go next?";
     summary.textContent = "Describe the trip you want. Your AI director will shape the route around your budget, pace, history, and architecture interests.";
     metric.textContent = "No active trip";
+    document.getElementById("startPlanningButton").textContent = "Plan with AI";
   }
 }
 

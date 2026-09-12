@@ -1,23 +1,25 @@
-const CACHE_NAME = "ai-travel-director-v36";
-const APP_FILES = ["./?app_version=36", "./index.html", "./styles.css?v=36", "./app.js?v=36", "./firebase-client.js?v=36", "./firebase-config.js", "./affiliate-config.js?v=36", "./maps.js?v=36", "./manifest.json?v=36", "./icon.svg",
-  "./js/community-data.js?v=36",
-  "./js/community.js?v=36",
-  "./js/directions.js?v=36",
-  "./js/explore.js?v=36",
-  "./js/home.js?v=36",
-  "./js/hotels.js?v=36",
-  "./js/itinerary.js?v=36",
-  "./js/onboarding.js?v=36",
-  "./js/persistence.js?v=36",
-  "./js/planner.js?v=36",
-  "./js/profile.js?v=36",
-  "./js/pwa.js?v=36",
-  "./js/safety.js?v=36",
-  "./js/smart-add.js?v=36",
-  "./js/state.js?v=36",
-  "./js/trip-model.js?v=36",
-  "./js/today.js?v=36",
-  "./js/ui.js?v=36"
+const CACHE_NAME = "ai-travel-director-v37";
+const APP_FILES = ["./?app_version=37", "./index.html", "./styles.css?v=37", "./app.js?v=37", "./firebase-client.js?v=37", "./firebase-config.js", "./affiliate-config.js?v=37", "./maps.js?v=37", "./manifest.json?v=37", "./icon.svg", "./assets/travel-backdrop.webp",
+  "./js/community-data.js?v=37",
+  "./js/community.js?v=37",
+  "./js/directions.js?v=37",
+  "./js/explore.js?v=37",
+  "./js/featured-place.js?v=37",
+  "./js/home.js?v=37",
+  "./js/hotels.js?v=37",
+  "./js/itinerary.js?v=37",
+  "./js/itinerary-photos.js?v=37",
+  "./js/onboarding.js?v=37",
+  "./js/persistence.js?v=37",
+  "./js/planner.js?v=37",
+  "./js/profile.js?v=37",
+  "./js/pwa.js?v=37",
+  "./js/safety.js?v=37",
+  "./js/smart-add.js?v=37",
+  "./js/state.js?v=37",
+  "./js/trip-model.js?v=37",
+  "./js/today.js?v=37",
+  "./js/ui.js?v=37"
 ];
 
 self.addEventListener("install", event => {
@@ -41,6 +43,6 @@ self.addEventListener("fetch", event => {
         }
         return response;
       })
-      .catch(() => caches.match(event.request).then(cached => cached || (event.request.mode === "navigate" ? caches.match("./?app_version=36") : undefined)))
+      .catch(() => caches.match(event.request).then(cached => cached || (event.request.mode === "navigate" ? caches.match("./?app_version=37") : undefined)))
   );
 });
