@@ -79,6 +79,7 @@ console.error = originalError;
 const { state } = await import(moduleURL("state"));
 const directions = await import(moduleURL("directions"));
 const model = await import(moduleURL("trip-model"));
+const smartAddModel = await import(moduleURL("smart-add"));
 const ui = await import(moduleURL("ui"));
 const element = id => document.getElementById(id);
 const navigate = async view => document.querySelector(`[data-view-link="${view}"]`).emit("click");
@@ -216,7 +217,7 @@ test("app modules preserve startup and feature interactions", async t => {
     const originalMapQuery = state.mapQuery;
     state.trip.destination = "Prague → Brno → Vienna";
     state.trip.itinerary.push(
-      { day: 3, title: "Brno", overnightLocation: "Brno", items: [] },
+      { day: 3, title: "Brno", overnightLocation: "Brno", items: [{ id: "brno-afternoon", name: "Brno afternoon", location: "Brno", time: "1:00 PM", durationMinutes: 90, cost: 0, done: false }] },
       { day: 4, title: "Vienna", overnightLocation: "Vienna", items: [] }
     );
     state.mapQuery = state.trip.destination;
@@ -246,13 +247,39 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.match(element("placeList").innerHTML, /data-add-place/);
     assert.match(element("placeList").innerHTML, />Add to trip</);
     assert.match(element("placeList").innerHTML, />Directions</);
-    assert.match(element("placeList").innerHTML, /data-place-location="1 Historic Square, Brno, Czechia"/);
     assert.match(element("mapLabelText").textContent, /3 History options in Brno/);
     await element("placeList").emit("click", { target: target({ "data-show-place-index": "0" }) });
     await settle();
     assert.deepEqual(mapCenters.at(-1), { lat: 49.19, lng: 16.6 });
     assert.equal(mapZooms.at(-1), 16);
     assert.match(element("mapLabelText").textContent, /Selected · Brno Castle/);
+
+    await element("placeList").emit("click", { target: target({ "data-add-place": "Brno Castle", "data-add-place-index": "0" }) });
+    assert.equal(element("smartAddDialog").open, true);
+    assert.equal(element("smartAddDay").value, "3");
+    assert.equal(element("smartAddTime").value, "10:00");
+    assert.equal(element("smartAddDuration").value, "120");
+    assert.equal(element("smartAddTitle").textContent, "Brno Castle");
+    assert.match(element("smartAddPlaceContext").textContent, /Map option 1.*1 Historic Square, Brno, Czechia/);
+    assert.match(element("smartAddRecommendation").textContent, /Best fit: Day 3/);
+    element("smartAddTime").value = "12:30";
+    await element("smartAddForm").emit("change");
+    assert.match(element("smartAddWarnings").innerHTML, /Time conflict with Brno afternoon/);
+    element("smartAddTime").value = "10:00";
+    await element("smartAddForm").emit("change");
+    assert.equal(element("smartAddWarnings").hidden, true);
+    await element("smartAddForm").emit("submit");
+    const smartPlace = state.trip.itinerary[2].items[0];
+    assert.equal(smartPlace.name, "Brno Castle");
+    assert.equal(smartPlace.placeId, "place-1");
+    assert.equal(smartPlace.durationMinutes, 120);
+    assert.equal(state.trip.itinerary[2].items[1].id, "brno-afternoon");
+    assert.equal(element("smartAddDialog").open, false);
+    assert.equal(state.currentView, "exploreView");
+    await element("placeList").emit("click", { target: target({ "data-add-place": "Brno Castle", "data-add-place-index": "0" }) });
+    assert.match(element("smartAddWarnings").innerHTML, /Already in your trip on Day 3/);
+    assert.equal(element("smartAddSubmit").disabled, true);
+    await element("closeSmartAddDialog").emit("click");
 
     placeSearchFails = true;
     await document.querySelector('[data-map-filter="local restaurants no alcohol"]').emit("click");
@@ -320,4 +347,25 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.equal(prompted, true);
     assert.equal(element("installButton").hidden, true);
   });
+});
+
+test("Smart Add scheduling helpers select the least crowded matching city and keep time order", () => {
+  const plan = {
+    startDate: "2027-07-01",
+    itinerary: [
+      { day: 1, title: "Brno arrival", overnightLocation: "Brno", items: [{ id: "one", name: "Old Town", location: "Brno", time: "9:00 AM" }, { id: "two", name: "Lunch", location: "Brno", time: "12:00 PM" }] },
+      { day: 2, title: "Brno", overnightLocation: "Brno", items: [{ id: "late", name: "Evening walk", location: "Brno", time: "6:00 PM" }] },
+      { day: 3, title: "Vienna", overnightLocation: "Vienna", items: [] }
+    ]
+  };
+  const place = { id: "castle", name: "Špilberk Castle", address: "Špilberk 210/1, Brno, Czechia" };
+  assert.equal(smartAddModel.recommendTripDay(plan, place, "Brno").day, 2);
+  assert.equal(smartAddModel.parseClockMinutes("1:15 PM"), 795);
+  assert.equal(smartAddModel.formatClockTime(795), "1:15 PM");
+  const assessment = smartAddModel.assessSmartAddSchedule(plan, { place, dayNumber: 2, time: "14:00", durationMinutes: 120, contextLocation: "Brno" });
+  assert.equal(assessment.duplicate, undefined);
+  assert.equal(assessment.conflicts.length, 0);
+  const added = { id: "added", name: place.name, location: place.address, time: "2:00 PM" };
+  smartAddModel.insertTripItemChronologically(plan.itinerary[1], added);
+  assert.deepEqual(plan.itinerary[1].items.map(item => item.id), ["added", "late"]);
 });

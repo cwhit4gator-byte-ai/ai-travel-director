@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=35";
-import { escapeHTML, safeImageURL, toast } from "./ui.js?v=35";
-import { scheduleSave } from "./persistence.js?v=35";
-import { loadCommunityFeed, publishCommunityExperience, loadCommunityActions, setCommunityHelpful, reportCommunityExperience, loadPublicTravelerProfile, requestAITrip, uploadExperiencePhotos, requestPhotoAnalysis, trackAppEvent } from "../firebase-client.js?v=35";
-import { normalizeAITrip, communityTripItems } from "./trip-model.js?v=35";
-import { communityItems, communityExperienceById } from "./community-data.js?v=35";
+import { state } from "./state.js?v=36";
+import { escapeHTML, safeImageURL, toast } from "./ui.js?v=36";
+import { scheduleSave } from "./persistence.js?v=36";
+import { loadCommunityFeed, publishCommunityExperience, loadCommunityActions, setCommunityHelpful, reportCommunityExperience, loadPublicTravelerProfile, requestAITrip, uploadExperiencePhotos, requestPhotoAnalysis, trackAppEvent } from "../firebase-client.js?v=36";
+import { normalizeAITrip, communityTripItems } from "./trip-model.js?v=36";
+import { communityItems, communityExperienceById } from "./community-data.js?v=36";
 
 export function createCommunity({ showView, renderAll, renderItinerary }) {
   function filteredCommunityItems() {

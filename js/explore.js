@@ -1,11 +1,10 @@
-import { state, saveLocalState } from "./state.js?v=35";
-import { escapeHTML, safeImageURL, toast } from "./ui.js?v=35";
-import { scheduleSave } from "./persistence.js?v=35";
-import { trackAppEvent } from "../firebase-client.js?v=35";
-import { focusGooglePlaceResult, renderGoogleMap, renderGooglePlaceResultsMap, renderGoogleRouteMap, searchNearbyPlaces } from "../maps.js?v=35";
-import { currentDestination, tripRouteStops } from "./trip-model.js?v=35";
+import { state, saveLocalState } from "./state.js?v=36";
+import { escapeHTML, safeImageURL, toast } from "./ui.js?v=36";
+import { trackAppEvent } from "../firebase-client.js?v=36";
+import { focusGooglePlaceResult, renderGoogleMap, renderGooglePlaceResultsMap, renderGoogleRouteMap, searchNearbyPlaces } from "../maps.js?v=36";
+import { currentDestination, tripRouteStops } from "./trip-model.js?v=36";
 
-export function createExplore({ showView, renderHome, renderCommunityMapPicks }) {
+export function createExplore({ renderCommunityMapPicks, openSmartAddDialog }) {
   let mapRequestId = 0;
   let categoryRequestId = 0;
   let selectedRouteStop = "";
@@ -98,7 +97,7 @@ export function createExplore({ showView, renderHome, renderCommunityMapPicks })
           <small>${escapeHTML(address)}</small>
           <div class="place-option-actions">
             <button class="place-option-action primary" type="button" data-show-place-index="${index}">${planningOnly ? "Show map search" : "Show on map"}</button>
-            ${planningOnly ? "" : `<button class="place-option-action" type="button" data-add-place="${escapeHTML(place.name)}" data-place-category="${escapeHTML(place.category || label)}" data-place-cost="${Number(place.cost || 0)}" data-place-location="${escapeHTML(address)}">Add to trip</button>`}
+            ${planningOnly ? "" : `<button class="place-option-action" type="button" data-add-place="${escapeHTML(place.name)}" data-add-place-index="${index}">Add to trip</button>`}
             <a class="place-option-action" href="${escapeHTML(externalURL)}" target="_blank" rel="noopener">${planningOnly ? "Open Maps" : "Directions"}</a>
           </div>
         </div>
@@ -259,19 +258,6 @@ export function createExplore({ showView, renderHome, renderCommunityMapPicks })
     trackAppEvent("map_place_selected", { category: activeCategory, planning_only: currentResultsArePlanningOnly });
   }
 
-  function addPlaceToTrip(name, category, cost, location) {
-    if (!state.trip) {
-      toast("Plan a destination before adding places");
-      showView("plannerView");
-      return;
-    }
-    const day = state.trip.itinerary[0];
-    day.items.push({ id: crypto.randomUUID(), time: "Flexible", name, location: location || name, category, cost: Number(cost || 0), note: "Saved from Explore. Confirm hours and availability before visiting.", done: false });
-    scheduleSave();
-    renderHome();
-    toast("Added to your trip");
-  }
-
   document.getElementById("mapSearchForm").addEventListener("submit", event => { event.preventDefault(); const query = document.getElementById("mapSearchInput").value.trim(); if (query) { activeCategory = ""; trackAppEvent("map_search", { method: "typed" }); updateMap(query); } });
   document.querySelectorAll("[data-map-filter]").forEach(button => button.addEventListener("click", () => { document.querySelectorAll("[data-map-filter]").forEach(item => item.classList.remove("active")); button.classList.add("active"); trackAppEvent("map_search", { method: "category", category: button.dataset.mapFilter }); const focus = selectedRouteStop || currentRouteStops()[0] || currentDestination(); showCategoryOptions(button.dataset.mapFilter, focus); }));
   document.getElementById("routeStopList").addEventListener("click", event => {
@@ -286,8 +272,19 @@ export function createExplore({ showView, renderHome, renderCommunityMapPicks })
   document.getElementById("placeList").addEventListener("click", event => {
     const mapButton = event.target.closest("[data-show-place-index]");
     if (mapButton) return showPlaceOnMap(mapButton.dataset.showPlaceIndex);
-    const addButton = event.target.closest("[data-add-place]");
-    if (addButton) addPlaceToTrip(addButton.dataset.addPlace, addButton.dataset.placeCategory, addButton.dataset.placeCost, addButton.dataset.placeLocation);
+    const addButton = event.target.closest("[data-add-place-index]");
+    if (addButton) {
+      const index = Number(addButton.dataset.addPlaceIndex);
+      const place = currentPlaceResults[index];
+      if (!place) return;
+      openSmartAddDialog({
+        place,
+        category: place.category || categoryLabels[activeCategory] || "Explore",
+        contextLocation: currentResultsLocation,
+        markerNumber: index + 1,
+        onAdded: day => { addButton.textContent = `✓ Day ${day.day}`; addButton.disabled = true; }
+      });
+    }
   });
 
   document.getElementById("communityMapList").addEventListener("click", event => { const button = event.target.closest("[data-map-community]"); if (button) { activeCategory = ""; state.mapQuery = button.dataset.mapCommunity; updateMap(state.mapQuery); } });

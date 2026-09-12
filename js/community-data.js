@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=35";
+import { state } from "./state.js?v=36";
 
 export function communityItems() {
   const combined = new Map();

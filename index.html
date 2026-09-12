@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b1830" />
   <meta name="description" content="AI-first travel planning, live itineraries, maps, traveler insights, and safety tools." />
   <title>AI Travel Director</title>
-  <link rel="manifest" href="manifest.json?v=35" />
+  <link rel="manifest" href="manifest.json?v=36" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=35" />
+  <link rel="stylesheet" href="styles.css?v=36" />
 </head>
 <body>
   <div class="app-shell">
@@ -332,6 +332,31 @@
     </form>
   </dialog>
 
+  <dialog id="smartAddDialog" class="action-dialog smart-add-dialog" aria-labelledby="smartAddTitle" aria-describedby="smartAddPlaceContext">
+    <form id="smartAddForm" class="action-dialog-shell">
+      <div class="section-heading compact">
+        <div><p class="eyebrow">SMART ADD TO TRIP</p><h2 id="smartAddTitle">Add this place</h2></div>
+        <button id="closeSmartAddDialog" class="round-button" type="button" aria-label="Close Smart Add">×</button>
+      </div>
+      <p id="smartAddPlaceContext" class="dialog-context"></p>
+      <div id="smartAddRecommendation" class="smart-add-recommendation" aria-live="polite"></div>
+      <label>Itinerary day<select id="smartAddDay" required></select></label>
+      <div class="two-column">
+        <label>Start time<input id="smartAddTime" type="time" required /></label>
+        <label>Visit length<select id="smartAddDuration"><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">1 hour</option><option value="75">1 hour 15 minutes</option><option value="90">1 hour 30 minutes</option><option value="120">2 hours</option><option value="180">3 hours</option></select></label>
+      </div>
+      <div class="smart-add-schedule">
+        <strong>Travel from the previous activity</strong>
+        <span id="smartAddTravel"></span>
+      </div>
+      <div id="smartAddWarnings" class="smart-add-warnings" role="alert" hidden></div>
+      <label>Estimated cost<input id="smartAddCost" type="number" min="0" step="1" inputmode="decimal" /></label>
+      <label>Notes<textarea id="smartAddNote" maxlength="600" rows="3"></textarea></label>
+      <p class="field-note">Opening hours, tickets, and live travel times should be confirmed before visiting.</p>
+      <button id="smartAddSubmit" class="primary-button" type="submit">Add to trip</button>
+    </form>
+  </dialog>
+
 
   <dialog id="onboardingDialog" class="onboarding-dialog" aria-labelledby="onboardingTitle">
     <div class="onboarding-shell">
@@ -365,7 +390,7 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="affiliate-config.js?v=35"></script>
-  <script type="module" src="app.js?v=35"></script>
+  <script src="affiliate-config.js?v=36"></script>
+  <script type="module" src="app.js?v=36"></script>
 </body>
 </html>
