@@ -149,11 +149,11 @@ export async function renderGooglePlaceResultsMap(element, places) {
   const [mapsLibrary, markerLibrary] = await loadLibraries();
   const { Map, LatLngBounds } = mapsLibrary;
   const { AdvancedMarkerElement, PinElement } = markerLibrary;
-  const usable = (places || []).filter(place => Number.isFinite(place.latitude) && Number.isFinite(place.longitude));
+  const usable = (places || []).map((place, cardIndex) => ({ place, cardIndex })).filter(({ place }) => Number.isFinite(place.latitude) && Number.isFinite(place.longitude));
   if (!usable.length) throw new Error("No mapped place results were found.");
 
   map ||= new Map(element, {
-    center: { lat: usable[0].latitude, lng: usable[0].longitude },
+    center: { lat: usable[0].place.latitude, lng: usable[0].place.longitude },
     zoom: 13,
     mapId: googleMapsConfig.mapId,
     mapTypeControl: false,
@@ -164,16 +164,17 @@ export async function renderGooglePlaceResultsMap(element, places) {
   markers.forEach(existing => { existing.map = null; });
   if (routeLine) routeLine.setMap(null);
   routeLine = null;
-  markers = usable.map((place, index) => {
-    const pin = PinElement ? new PinElement({ glyph: String(index + 1), glyphColor: "#ffffff", background: "#246bfd", borderColor: "#0b1830" }) : null;
-    return new AdvancedMarkerElement({ map, position: { lat: place.latitude, lng: place.longitude }, title: `${index + 1}. ${place.name}`, ...(pin?.element ? { content: pin.element } : {}) });
+  markers = usable.map(({ place, cardIndex }) => {
+    const markerNumber = cardIndex + 1;
+    const pin = PinElement ? new PinElement({ glyph: String(markerNumber), glyphColor: "#ffffff", background: "#246bfd", borderColor: "#0b1830" }) : null;
+    return new AdvancedMarkerElement({ map, position: { lat: place.latitude, lng: place.longitude }, title: `${markerNumber}. ${place.name}`, ...(pin?.element ? { content: pin.element } : {}) });
   });
   if (usable.length > 1 && LatLngBounds) {
     const bounds = new LatLngBounds();
-    usable.forEach(place => bounds.extend({ lat: place.latitude, lng: place.longitude }));
+    usable.forEach(({ place }) => bounds.extend({ lat: place.latitude, lng: place.longitude }));
     map.fitBounds(bounds, 54);
   } else {
-    map.setCenter?.({ lat: usable[0].latitude, lng: usable[0].longitude });
+    map.setCenter?.({ lat: usable[0].place.latitude, lng: usable[0].place.longitude });
     map.setZoom?.(14);
   }
   return `${usable.length} options found`;
