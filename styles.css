@@ -7,7 +7,7 @@
   --sky: #eaf1ff;
   --sand: #f3b45e;
   --paper: #ffffff;
-  --canvas: #e7eef7;
+  --canvas: #dbe5f0;
   --ink: #13213a;
   --muted: #687389;
   --line: #dce2ea;
@@ -19,15 +19,15 @@
 }
 
 * { box-sizing: border-box; }
-html { min-height: 100%; background: #dce6f2; }
+html { min-height: 100%; background: #cbd8e6; }
 body {
   min-height: 100%;
   margin: 0;
-  background-color: #dce6f2;
+  background-color: #cbd8e6;
   background-image:
     radial-gradient(circle at 8% -8%, rgba(36, 107, 253, .2), transparent 30rem),
     radial-gradient(circle at 92% 58%, rgba(243, 180, 94, .17), transparent 28rem),
-    linear-gradient(155deg, rgba(214,226,240,.72) 0%, rgba(239,245,251,.66) 48%, rgba(214,227,240,.74) 100%),
+    linear-gradient(155deg, rgba(190,207,225,.68) 0%, rgba(225,235,245,.6) 48%, rgba(190,208,226,.72) 100%),
     url("assets/travel-backdrop.webp");
   background-position: center;
   background-repeat: no-repeat;
@@ -54,7 +54,7 @@ h3 { margin-bottom: .25rem; font-size: 1.02rem; }
   background:
     radial-gradient(circle at -8% 16%, transparent 0 150px, rgba(36,107,253,.075) 151px 153px, transparent 154px 205px, rgba(36,107,253,.045) 206px 208px, transparent 209px),
     radial-gradient(circle at 112% 63%, transparent 0 205px, rgba(243,180,94,.11) 206px 208px, transparent 209px 274px, rgba(243,180,94,.055) 275px 277px, transparent 278px),
-    linear-gradient(180deg, rgba(246,250,255,.78), rgba(226,236,247,.86));
+    linear-gradient(180deg, rgba(232,240,249,.74), rgba(204,219,235,.84));
   border-inline: 1px solid rgba(181,198,220,.55); box-shadow: 0 0 60px rgba(20,38,72,.12);
 }
 
