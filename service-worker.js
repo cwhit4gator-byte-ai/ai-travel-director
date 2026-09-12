@@ -1,5 +1,5 @@
 const CACHE_NAME = "ai-travel-director-v37";
-const APP_FILES = ["./?app_version=37", "./index.html", "./styles.css?v=37", "./app.js?v=37", "./firebase-client.js?v=37", "./firebase-config.js", "./affiliate-config.js?v=37", "./maps.js?v=37", "./manifest.json?v=37", "./icon.svg",
+const APP_FILES = ["./?app_version=37", "./index.html", "./styles.css?v=37", "./app.js?v=37", "./firebase-client.js?v=37", "./firebase-config.js", "./affiliate-config.js?v=37", "./maps.js?v=37", "./manifest.json?v=37", "./icon.svg", "./assets/travel-backdrop.webp",
   "./js/community-data.js?v=37",
   "./js/community.js?v=37",
   "./js/directions.js?v=37",

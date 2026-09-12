@@ -45,6 +45,9 @@ test("the offline shell includes the entire module graph at one version", async 
   assert(html.includes(`app.js?v=${version}`));
   assert(html.includes(`styles.css?v=${version}`));
   assert(html.includes(`manifest.json?v=${version}`));
+  const css = await readFile(new URL("styles.css", root), "utf8");
+  assert(css.includes('url("assets/travel-backdrop.webp")'));
+  assert(cachedURLs.has(new URL("assets/travel-backdrop.webp", root).href));
   const pwa = await readFile(new URL("js/pwa.js", root), "utf8");
   assert(pwa.includes(`const APP_VERSION = "${version}"`));
   const hosting = JSON.parse(await readFile(new URL("firebase.json", root)));
