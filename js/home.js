@@ -1,5 +1,6 @@
-import { state } from "./state.js?v=27";
-import { escapeHTML, normalizeInterests, toast } from "./ui.js?v=27";
+import { state } from "./state.js?v=28";
+import { escapeHTML, normalizeInterests, toast } from "./ui.js?v=28";
+import { tripDateForDay, formatTripDate } from "./trip-model.js?v=28";
 
 export function renderHome() {
   const title = document.getElementById("homeHeading");
@@ -9,8 +10,11 @@ export function renderHome() {
   const savedCount = state.collections.reduce((total, collection) => total + (collection.items || []).length, 0);
   if (collectionsMetric) collectionsMetric.textContent = savedCount ? `${savedCount} saved place${savedCount === 1 ? "" : "s"}` : "Nothing saved yet";
   if (state.trip) {
+    const firstDate = tripDateForDay(1);
+    const lastDate = tripDateForDay(state.trip.days);
+    const dateSummary = firstDate ? `${formatTripDate(firstDate, { month: "short", day: "numeric" })}–${formatTripDate(lastDate, { month: "short", day: "numeric", year: "numeric" })} · ` : "";
     title.textContent = state.trip.destination;
-    summary.textContent = `${state.trip.days}-day working itinerary · $${Number(state.trip.budget || 0).toLocaleString("en-US")} budget · no bookings made`;
+    summary.textContent = `${dateSummary}${state.trip.days}-day working itinerary · $${Number(state.trip.budget || 0).toLocaleString("en-US")} budget · no bookings made`;
     metric.textContent = `${state.trip.days} days in ${state.trip.destination}`;
   } else {
     title.textContent = "Where should we go next?";

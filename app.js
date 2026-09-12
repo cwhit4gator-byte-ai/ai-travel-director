@@ -1,21 +1,23 @@
-import { initializeCloud, observeAuth, trackAppEvent } from "./firebase-client.js?v=27";
-import { state, returningVisitor } from "./js/state.js?v=27";
-import { setCloudBanner, trackAppError } from "./js/ui.js?v=27";
-import { renderHome, renderRecommendations, initializeHome } from "./js/home.js?v=27";
-import { createPlanner } from "./js/planner.js?v=27";
-import { createHotels } from "./js/hotels.js?v=27";
-import { createItinerary } from "./js/itinerary.js?v=27";
-import { createCommunity } from "./js/community.js?v=27";
-import { createExplore } from "./js/explore.js?v=27";
-import { createProfile } from "./js/profile.js?v=27";
-import { initializeSafety } from "./js/safety.js?v=27";
-import { initializePWA } from "./js/pwa.js?v=27";
-import { createOnboarding } from "./js/onboarding.js?v=27";
+import { initializeCloud, observeAuth, trackAppEvent } from "./firebase-client.js?v=28";
+import { state, returningVisitor } from "./js/state.js?v=28";
+import { setCloudBanner, trackAppError } from "./js/ui.js?v=28";
+import { renderHome, renderRecommendations, initializeHome } from "./js/home.js?v=28";
+import { createPlanner } from "./js/planner.js?v=28";
+import { createHotels } from "./js/hotels.js?v=28";
+import { createItinerary } from "./js/itinerary.js?v=28";
+import { createCommunity } from "./js/community.js?v=28";
+import { createExplore } from "./js/explore.js?v=28";
+import { createProfile } from "./js/profile.js?v=28";
+import { initializeSafety } from "./js/safety.js?v=28";
+import { initializePWA } from "./js/pwa.js?v=28";
+import { createOnboarding } from "./js/onboarding.js?v=28";
+import { createToday } from "./js/today.js?v=28";
 
 // Each feature owns its handlers. Only navigation and page refresh cross features.
 const planner = createPlanner({ renderAll });
 const hotels = createHotels({ showView, renderAll, bindViewLinks });
-const itinerary = createItinerary({ showView, renderAll, bindViewLinks, replanCommunityPicks: () => community.replanCommunityPicks() });
+const today = createToday({ showView });
+const itinerary = createItinerary({ showView, renderAll, bindViewLinks, replanCommunityPicks: () => community.replanCommunityPicks(), updateTripHotelDates: hotels.updateTripHotelDates, renderToday: today.renderToday });
 const community = createCommunity({ showView, renderAll, renderItinerary: () => itinerary.renderItinerary() });
 const explore = createExplore({ showView, renderHome, renderCommunityMapPicks: community.renderCommunityMapPicks });
 const profile = createProfile({ showView, renderAll, renderCommunity: community.renderCommunity, renderRecommendations, hydrateCommunityActions: community.hydrateCommunityActions });
@@ -39,6 +41,7 @@ function showView(viewId) {
   if (viewId === "collectionsView") community.renderCollections();
   if (viewId === "hotelsView") hotels.renderHotels();
   if (viewId === "exploreView") explore.renderMap();
+  if (viewId === "homeView") today.renderToday();
 }
 
 function bindViewLinks(root = document) {
@@ -52,6 +55,7 @@ function bindViewLinks(root = document) {
 function renderAll() {
   renderHome();
   renderRecommendations();
+  today.renderToday();
   community.renderCommunity();
   itinerary.renderItinerary();
   community.renderCollections();

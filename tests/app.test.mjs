@@ -136,6 +136,19 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.equal(model.findTripItem(added.id), null);
     assert.match(transitURL(1).searchParams.get("destination"), /^Dinner & a walk/);
   });
+  await t.test("one trip date labels each day, fills grouped hotel dates, and powers Today routes", async () => {
+    await navigate("itineraryView");
+    await element("itineraryContent").emit("change", { target: Object.assign(target({ "data-trip-start-date": "" }), { value: "2027-06-10" }) });
+    assert.equal(state.trip.startDate, "2027-06-10");
+    assert.match(dayHTML(1), /Jun 10/);
+    assert.match(dayHTML(2), /Jun 11/);
+    assert.match(element("tripSummary").textContent, /Jun 10–Jun 11, 2027/);
+    assert.deepEqual(state.trip.hotelStayDates["Prague::1-2"], { checkIn: "2027-06-10", checkOut: "2027-06-12", manualDates: false });
+    assert.match(element("todayDashboard").innerHTML, /data-today-route="transit"/);
+    assert.match(element("todayDashboard").innerHTML, /data-today-route="walking"/);
+    assert.match(element("todayDashboard").innerHTML, /data-today-route="driving"/);
+    assert.match(element("todayHeading").textContent, /Day 1 is ready/);
+  });
   await t.test("hotels retain grouped nights, dates, country, booking links, and currency", async () => {
     await navigate("hotelsView");
     await settle();

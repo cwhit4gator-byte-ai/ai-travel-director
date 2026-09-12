@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=27";
+import { state } from "./state.js?v=28";
 
 export const activityCatalog = [
   { name: "Old town architecture walk", category: "Architecture", time: "9:00 AM", cost: 0, icon: "⌂", note: "Begin early for quiet streets and softer light." },
@@ -49,6 +49,49 @@ export function tripOvernightStops() {
   return (state.trip.overnightLocations || []).map((location, index) => ({ id: `${location}::${index + 1}`, location: String(location), days: [], startDay: index + 1, endDay: index + 1 }));
 }
 
+export function normalizeISODate(value) {
+  const match = String(value || "").trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return "";
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day ? `${match[1]}-${match[2]}-${match[3]}` : "";
+}
+
+export function addDaysToISODate(value, days = 0) {
+  const normalized = normalizeISODate(value);
+  if (!normalized) return "";
+  const [year, month, day] = normalized.split("-").map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  date.setUTCDate(date.getUTCDate() + Number(days || 0));
+  return date.toISOString().slice(0, 10);
+}
+
+export function tripDateForDay(dayNumber, trip = state.trip) {
+  const startDate = normalizeISODate(trip?.startDate);
+  if (!startDate) return "";
+  return addDaysToISODate(startDate, Math.max(0, Number(dayNumber || 1) - 1));
+}
+
+export function formatTripDate(value, options = { weekday: "short", month: "short", day: "numeric" }) {
+  const normalized = normalizeISODate(value);
+  if (!normalized) return "";
+  const [year, month, day] = normalized.split("-").map(Number);
+  return new Intl.DateTimeFormat(navigator.language || "en-US", { timeZone: "UTC", ...options }).format(new Date(Date.UTC(year, month - 1, day)));
+}
+
+export function tripDayNumberForDate(value, trip = state.trip) {
+  const target = normalizeISODate(value);
+  const start = normalizeISODate(trip?.startDate);
+  if (!target || !start) return null;
+  const asTime = date => {
+    const [year, month, day] = date.split("-").map(Number);
+    return Date.UTC(year, month - 1, day);
+  };
+  return Math.floor((asTime(target) - asTime(start)) / 86400000) + 1;
+}
+
 function parseDestination(text) {
   const patterns = [/(?:in|to|visit|for)\s+([A-Z][\p{L}' -]+?)(?:\s+(?:under|for|with|from|on|by|and)\b|[,.]|$)/iu, /^([A-Z][\p{L}' -]+?)(?:\s+for\s+|,|$)/u];
   for (const pattern of patterns) {
@@ -69,6 +112,17 @@ function parseBudget(text) {
   return Number((dollar?.[1] || phrased?.[1] || state.profile.budget || 1500).replace?.(/,/g, "") || state.profile.budget);
 }
 
+function parseTripStartDate(text) {
+  const iso = String(text || "").match(/\b(20\d{2}-\d{2}-\d{2})\b/)?.[1];
+  if (normalizeISODate(iso)) return iso;
+  const numeric = String(text || "").match(/\b(\d{1,2})\/(\d{1,2})\/(20\d{2})\b/);
+  if (numeric) return normalizeISODate(`${numeric[3]}-${numeric[1].padStart(2, "0")}-${numeric[2].padStart(2, "0")}`);
+  const written = String(text || "").match(/\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2}(?:,)?\s+20\d{2}\b/i)?.[0];
+  if (!written) return "";
+  const parsed = new Date(`${written} 00:00:00 UTC`);
+  return Number.isNaN(parsed.valueOf()) ? "" : parsed.toISOString().slice(0, 10);
+}
+
 export function buildLocalTrip(text) {
   const destination = parseDestination(text);
   const days = parseDays(text);
@@ -83,7 +137,7 @@ export function buildLocalTrip(text) {
       items: dayActivities.map((activity, index) => ({ ...activity, id: crypto.randomUUID(), time: index === 0 ? "9:30 AM" : index === 1 ? "1:00 PM" : "4:00 PM", done: false }))
     };
   });
-  return { destination, days, budget, overnightLocations: [destination], itinerary, sourceRequest: text, generatedBy: "local", createdAt: new Date().toISOString() };
+  return { destination, days, budget, startDate: parseTripStartDate(text), overnightLocations: [destination], itinerary, sourceRequest: text, generatedBy: "local", createdAt: new Date().toISOString() };
 }
 
 export function normalizeAITrip(result, sourceRequest) {
@@ -98,7 +152,7 @@ export function normalizeAITrip(result, sourceRequest) {
     const overnightLocation = [...items].reverse().map(item => item.location.trim()).find(Boolean) || inferOvernightLocation(day, destination) || destination;
     return { day: Number(day.day || dayIndex + 1), title: String(day.title || `Day ${dayIndex + 1}`), overnightLocation, items };
   });
-  return { destination, days: Math.max(1, Math.min(Number(raw?.days || days.length || parseDays(sourceRequest)), 10)), budget: Number(raw?.budget || parseBudget(sourceRequest)), sourceRequest, generatedBy: "openai", createdAt: new Date().toISOString(), overnightLocations: [...new Set(itinerary.map(day => day.overnightLocation).filter(Boolean))], itinerary };
+  return { destination, days: Math.max(1, Math.min(Number(raw?.days || days.length || parseDays(sourceRequest)), 10)), budget: Number(raw?.budget || parseBudget(sourceRequest)), startDate: normalizeISODate(raw?.startDate) || parseTripStartDate(sourceRequest), sourceRequest, generatedBy: "openai", createdAt: new Date().toISOString(), overnightLocations: [...new Set(itinerary.map(day => day.overnightLocation).filter(Boolean))], itinerary };
 }
 
 export function tripTotals() {

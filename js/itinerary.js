@@ -1,18 +1,19 @@
-import { state } from "./state.js?v=27";
-import { escapeHTML, toast, trackAppError } from "./ui.js?v=27";
-import { scheduleSave } from "./persistence.js?v=27";
-import { trackAppEvent } from "../firebase-client.js?v=27";
-import { tripTotals, findTripItem, refreshTripOvernightLocations, communityTripItems } from "./trip-model.js?v=27";
-import { dayRouteURL, currentLocationTransitURL, nextIncompleteTripStop, itemDirectionsURL } from "./directions.js?v=27";
+import { state } from "./state.js?v=28";
+import { escapeHTML, toast, trackAppError } from "./ui.js?v=28";
+import { scheduleSave } from "./persistence.js?v=28";
+import { trackAppEvent } from "../firebase-client.js?v=28";
+import { tripTotals, findTripItem, refreshTripOvernightLocations, communityTripItems, tripDateForDay, formatTripDate, normalizeISODate } from "./trip-model.js?v=28";
+import { dayRouteURL, currentLocationTransitURL, nextIncompleteTripStop, itemDirectionsURL } from "./directions.js?v=28";
 
-export function createItinerary({ showView, renderAll, bindViewLinks, replanCommunityPicks }) {
+export function createItinerary({ showView, renderAll, bindViewLinks, replanCommunityPicks, updateTripHotelDates, renderToday }) {
   function dayShareText(day) {
     const items = (day.items || []).map(item => {
       const location = item.location ? ` · ${item.location}` : "";
       const completed = item.done ? " ✓" : "";
       return `${item.time} — ${item.name}${location}${completed}`;
     });
-    return [`Day ${day.day}: ${day.title}`, ...items, day.overnightLocation ? `Overnight: ${day.overnightLocation}` : "", `Route: ${dayRouteURL(day)}`].filter(Boolean).join("\n");
+    const date = tripDateForDay(day.day);
+    return [`Day ${day.day}${date ? ` · ${formatTripDate(date, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}` : ""}: ${day.title}`, ...items, day.overnightLocation ? `Overnight: ${day.overnightLocation}` : "", `Route: ${dayRouteURL(day)}`].filter(Boolean).join("\n");
   }
 
   async function shareItineraryDay(day) {
@@ -62,18 +63,19 @@ export function createItinerary({ showView, renderAll, bindViewLinks, replanComm
     const budget = Math.max(1, Number(state.trip.budget || 0));
     const budgetPercent = Math.min(100, Math.round((totals.planned / budget) * 100));
     content.innerHTML = `
-      <article class="trip-summary-card"><p class="eyebrow light">${state.trip.generatedBy === "openai" ? "AI-GENERATED DRAFT" : "WORKING ITINERARY"}</p><h2>${escapeHTML(state.trip.destination)}</h2><p>${state.trip.days} days · Purchases and live availability are not verified.</p><div class="trip-stats"><div class="trip-stat"><small>ACTIVITIES</small><strong>${totals.items}</strong></div><div class="trip-stat"><small>EST. PLAN</small><strong>${totals.planned.toLocaleString("en-US")}</strong></div><div class="trip-stat"><small>BUDGET</small><strong>${budget.toLocaleString("en-US")}</strong></div></div><div class="budget-bar" aria-label="${budgetPercent}% of working budget represented by listed activity estimates"><span style="width:${budgetPercent}%"></span></div></article>
+      <article class="trip-summary-card"><p class="eyebrow light">${state.trip.generatedBy === "openai" ? "AI-GENERATED DRAFT" : "WORKING ITINERARY"}</p><h2>${escapeHTML(state.trip.destination)}</h2><p>${state.trip.days} days · Purchases and live availability are not verified.</p><div class="trip-date-control"><label for="tripStartDate">Trip start date</label><input id="tripStartDate" type="date" data-trip-start-date value="${escapeHTML(state.trip.startDate || "")}" aria-describedby="tripDateHelp"><small id="tripDateHelp">Sets every itinerary date and automatically fills hotel dates for each overnight city.</small></div><div class="trip-stats"><div class="trip-stat"><small>ACTIVITIES</small><strong>${totals.items}</strong></div><div class="trip-stat"><small>EST. PLAN</small><strong>${totals.planned.toLocaleString("en-US")}</strong></div><div class="trip-stat"><small>BUDGET</small><strong>${budget.toLocaleString("en-US")}</strong></div></div><div class="budget-bar" aria-label="${budgetPercent}% of working budget represented by listed activity estimates"><span style="width:${budgetPercent}%"></span></div></article>
       ${communityTripItems().length ? `<aside class="community-replan-card"><div><span class="community-replan-icon" aria-hidden="true">✦</span><p><strong>${communityTripItems().length} community pick${communityTripItems().length === 1 ? "" : "s"} saved</strong><small>Let AI choose the best day and time while keeping your travel preferences.</small></p></div><button class="primary-button compact-button" type="button" data-replan-community ${state.isReplanningCommunity ? "disabled" : ""}>${state.isReplanningCommunity ? "Replanning…" : "Fit with AI"}</button></aside>` : ""}
       <aside class="trip-route-note"><strong>Getting around</strong><span>Check public transit from your current location to the day's next unfinished stop. The highlighted button updates as you mark stops complete. Some routes may not be available by transit, so walking or a taxi may be required. Google Maps may ask for your location or a starting point.</span></aside>
-      <div class="day-tabs">${state.trip.itinerary.map(day => `<button class="day-tab" data-scroll-day="${day.day}">Day ${day.day}</button>`).join("")}</div>
+      <div class="day-tabs">${state.trip.itinerary.map(day => { const date = tripDateForDay(day.day); return `<button class="day-tab" data-scroll-day="${day.day}">Day ${day.day}${date ? ` · ${escapeHTML(formatTripDate(date, { month: "short", day: "numeric" }))}` : ""}</button>`; }).join("")}</div>
       ${state.trip.itinerary.map(day => {
         const routeURL = dayRouteURL(day);
         const transitURL = currentLocationTransitURL(day);
+        const dayDate = tripDateForDay(day.day);
         const nextStopName = nextIncompleteTripStop(day)?.name || "the next stop";
         const dayCost = (day.items || []).reduce((sum, item) => sum + Number(item.cost || 0), 0);
         const dayCompleted = (day.items || []).filter(item => item.done).length;
         return `<section class="day-card" id="tripDay${day.day}" data-day-number="${day.day}">
-          <div class="day-card-heading"><div><p class="eyebrow">DAY ${day.day}</p><h3>${escapeHTML(day.title)}</h3></div><span class="day-progress">${dayCompleted}/${(day.items || []).length} done</span></div>
+          <div class="day-card-heading"><div><p class="eyebrow">DAY ${day.day}${dayDate ? ` · ${escapeHTML(formatTripDate(dayDate))}` : ""}</p><h3>${escapeHTML(day.title)}</h3></div><span class="day-progress">${dayCompleted}/${(day.items || []).length} done</span></div>
           <div class="day-meta"><span>⌖ ${escapeHTML(day.overnightLocation || state.trip.destination)}</span><span>${dayCost.toLocaleString("en-US")} estimated</span></div>
           ${transitURL ? `<a class="day-transit-button" href="${escapeHTML(transitURL)}" target="_blank" rel="noopener" data-trip-route="transit" aria-label="Check transit from my location to ${escapeHTML(nextStopName)}"><span class="day-transit-icon" aria-hidden="true">↗</span><span><strong>Check transit from my location</strong><small>Next stop: ${escapeHTML(nextStopName)}</small></span></a>` : day.items?.length ? '<p class="day-transit-complete" role="status"><span aria-hidden="true">✓</span> All stops complete for this day</p>' : ""}
           ${(day.items || []).map((item, index) => `
@@ -124,6 +126,17 @@ export function createItinerary({ showView, renderAll, bindViewLinks, replanComm
     if (action.dataset.tripAction === "map") { state.mapQuery = `${found.item.name} in ${state.trip.destination}`; showView("exploreView"); return; }
     scheduleSave();
     renderItinerary();
+    renderToday();
+  });
+
+  document.getElementById("itineraryContent").addEventListener("change", event => {
+    if (!event.target.matches("[data-trip-start-date]") || !state.trip) return;
+    state.trip.startDate = normalizeISODate(event.target.value);
+    updateTripHotelDates();
+    scheduleSave();
+    trackAppEvent("trip_dates_updated", { status: state.trip.startDate ? "set" : "cleared" });
+    renderAll();
+    toast(state.trip.startDate ? "Trip dates and automatic hotel dates updated" : "Trip dates cleared");
   });
 
   const tripItemDialog = document.getElementById("tripItemDialog");
@@ -166,7 +179,7 @@ export function createItinerary({ showView, renderAll, bindViewLinks, replanComm
     toast("Activity removed");
   });
 
-  document.getElementById("clearTripButton").addEventListener("click", () => { state.trip = null; scheduleSave(); renderAll(); toast("Trip cleared"); });
+  document.getElementById("clearTripButton").addEventListener("click", () => { state.trip = null; state.selectedOvernightLocation = ""; state.hotelStay.checkIn = ""; state.hotelStay.checkOut = ""; scheduleSave(); renderAll(); toast("Trip cleared"); });
 
   return { renderItinerary };
 }

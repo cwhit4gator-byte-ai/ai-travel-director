@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=27";
-import { normalizeInterests, trackAppError } from "./ui.js?v=27";
-import { scheduleSave } from "./persistence.js?v=27";
-import { requestAITrip, trackAppEvent } from "../firebase-client.js?v=27";
-import { normalizeAITrip, buildLocalTrip } from "./trip-model.js?v=27";
-import { communityItems } from "./community-data.js?v=27";
+import { state } from "./state.js?v=28";
+import { normalizeInterests, trackAppError } from "./ui.js?v=28";
+import { scheduleSave } from "./persistence.js?v=28";
+import { requestAITrip, trackAppEvent } from "../firebase-client.js?v=28";
+import { normalizeAITrip, buildLocalTrip } from "./trip-model.js?v=28";
+import { communityItems } from "./community-data.js?v=28";
 
 export function createPlanner({ renderAll }) {
   function addMessage(text, type = "ai", pending = false) {
@@ -50,6 +50,8 @@ export function createPlanner({ renderAll }) {
       state.trip = result.trip;
       state.selectedOvernightLocation = "";
       state.hotelLocationsAttempted = false;
+      state.hotelStay.checkIn = "";
+      state.hotelStay.checkOut = "";
       trackAppEvent("trip_created", { method: state.trip.generatedBy === "openai" ? "cloud_ai" : "local" });
       state.mapQuery = state.trip.destination;
       scheduleSave();

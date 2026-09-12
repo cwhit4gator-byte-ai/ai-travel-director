@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=27";
+import { state } from "./state.js?v=28";
 
 export function preferredTripTravelMode() {
   const styles = (state.profile.travelStyles || []).map(value => String(value).toLocaleLowerCase());
@@ -32,15 +32,18 @@ export function nextIncompleteTripStop(day) {
   return (day?.items || []).find(item => !item.done) || null;
 }
 
-export function currentLocationTransitURL(day) {
-  const nextItem = nextIncompleteTripStop(day);
-  if (!nextItem) return "";
+export function currentLocationDirectionsURL(day, item = nextIncompleteTripStop(day), travelMode = "transit") {
+  if (!item) return "";
   const url = new URL("https://www.google.com/maps/dir/");
   url.searchParams.set("api", "1");
-  url.searchParams.set("destination", itineraryItemQuery(nextItem, day));
-  url.searchParams.set("travelmode", "transit");
+  url.searchParams.set("destination", itineraryItemQuery(item, day));
+  if (["transit", "walking", "driving"].includes(travelMode)) url.searchParams.set("travelmode", travelMode);
   // Omitting origin lets Google use the device location or ask for a start.
   return url.href;
+}
+
+export function currentLocationTransitURL(day) {
+  return currentLocationDirectionsURL(day, nextIncompleteTripStop(day), "transit");
 }
 
 export function dayRouteURL(day) {

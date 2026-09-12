@@ -7,6 +7,8 @@ A mobile-first personal travel app with AI trip planning, Google Maps exploratio
 - Human-friendly Home, Plan, Explore, Trip, Safety, Experience, and Profile views
 - Editable daily itineraries with stop-to-stop directions, full-day routes, completion progress, and native sharing
 - Current-location transit links that advance to the next unfinished stop as activities are completed
+- One trip start date that labels every itinerary day and keeps automatic hotel dates aligned per consecutive-city stop
+- A Today dashboard with the next unfinished stop, remaining activities, tonight's hotel, and Transit, Walk, and Drive shortcuts
 - Interactive Google Maps search with category filters, directions, location lookup, and “add to trip” actions
 - Secure Firebase Authentication, Firestore sync, Storage uploads, and callable Functions adapters
 - Shared Community Insights feed with public posts, destination filters, pagination, helpful reactions, private reports, photo galleries, and Explore-map links
@@ -27,7 +29,8 @@ A mobile-first personal travel app with AI trip planning, Google Maps exploratio
 | Insights, photos, traveler profiles, and collections | `js/community.js`, `js/community-data.js` |
 | Installation and automatic updates | `js/pwa.js`, `service-worker.js` |
 | AI planning and trip data | `js/planner.js`, `js/trip-model.js` |
-| Home, Explore, account settings, safety, and onboarding | `js/home.js`, `js/explore.js`, `js/profile.js`, `js/safety.js`, `js/onboarding.js` |
+| Home and current travel day | `js/home.js`, `js/today.js` |
+| Explore, account settings, safety, and onboarding | `js/explore.js`, `js/profile.js`, `js/safety.js`, `js/onboarding.js` |
 | Shared state, persistence, and UI helpers | `js/state.js`, `js/persistence.js`, `js/ui.js` |
 | External services | `firebase-client.js`, `maps.js` |
 

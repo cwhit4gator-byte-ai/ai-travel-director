@@ -1,4 +1,4 @@
-import { readJSON } from "./ui.js?v=27";
+import { readJSON } from "./ui.js?v=28";
 
 const STORAGE_KEY = "aitd_v3_state";
 export const returningVisitor = Boolean(localStorage.getItem(STORAGE_KEY));
