@@ -1,12 +1,19 @@
-import { findTripItem } from "./trip-model.js?v=37";
-import { loadActivityPhoto } from "./featured-place.js?v=37";
-import { safeImageURL } from "./ui.js?v=37";
+import { findTripItem } from "./trip-model.js?v=38";
+import { loadActivityPhoto } from "./featured-place.js?v=38";
+import { safeImageURL } from "./ui.js?v=38";
 
 const activityPhotoCache = new Map();
 let hydrationSequence = 0;
 
 export function itineraryPhotoKey(item, day = {}) {
   return [item?.name, item?.location || day?.overnightLocation].map(value => String(value || "").trim().toLocaleLowerCase()).filter(Boolean).join(" | ");
+}
+
+export function loadCachedActivityPhoto(item, day = {}) {
+  const key = itineraryPhotoKey(item, day);
+  if (!key) return Promise.resolve(null);
+  if (!activityPhotoCache.has(key)) activityPhotoCache.set(key, loadActivityPhoto(item, day).catch(() => null));
+  return activityPhotoCache.get(key);
 }
 
 async function loadInBatches(tasks, batchSize = 3) {
@@ -49,10 +56,7 @@ export async function hydrateItineraryPhotos(root = document) {
     if (!image) return;
     const found = findTripItem(card.dataset.itemId);
     if (!found) return;
-    const key = itineraryPhotoKey(found.item, found.day);
-    if (!key) return;
-    if (!activityPhotoCache.has(key)) activityPhotoCache.set(key, loadActivityPhoto(found.item, found.day).catch(() => null));
-    const photo = await activityPhotoCache.get(key);
+    const photo = await loadCachedActivityPhoto(found.item, found.day);
     if (photo) applyPhoto(card, photo, sequence);
   });
   await loadInBatches(tasks);

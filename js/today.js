@@ -1,8 +1,9 @@
-import { state } from "./state.js?v=37";
-import { escapeHTML } from "./ui.js?v=37";
-import { trackAppEvent } from "../firebase-client.js?v=37";
-import { tripDateForDay, formatTripDate, tripDayNumberForDate, tripOvernightStops } from "./trip-model.js?v=37";
-import { nextIncompleteTripStop, currentLocationDirectionsURL } from "./directions.js?v=37";
+import { state } from "./state.js?v=38";
+import { escapeHTML, safeImageURL } from "./ui.js?v=38";
+import { trackAppEvent } from "../firebase-client.js?v=38";
+import { tripDateForDay, formatTripDate, tripDayNumberForDate, tripOvernightStops } from "./trip-model.js?v=38";
+import { nextIncompleteTripStop, currentLocationDirectionsURL } from "./directions.js?v=38";
+import { loadCachedActivityPhoto } from "./itinerary-photos.js?v=38";
 
 export function localISODate(now = new Date()) {
   const year = now.getFullYear();
@@ -32,9 +33,41 @@ export function tripTodayContext(trip, today = localISODate()) {
 export function createToday({ showView }) {
   const dashboard = document.getElementById("todayDashboard");
   const section = document.getElementById("todaySection");
+  let photoSequence = 0;
+
+  async function hydrateNextStopPhoto(next, day) {
+    const sequence = ++photoSequence;
+    const panel = dashboard.querySelector("[data-today-photo]");
+    if (!next || !panel) return;
+    const photo = await loadCachedActivityPhoto(next, day);
+    if (!photo || sequence !== photoSequence || panel.isConnected === false) return;
+    const image = panel.querySelector(".today-next-photo");
+    const credit = panel.querySelector(".today-next-photo-credit");
+    const photoURL = safeImageURL(photo.photoURL || photo.heroPhotoURL);
+    if (!image || !photoURL) return;
+    image.onload = () => {
+      if (sequence === photoSequence && panel.isConnected !== false) panel.classList.add("has-photo");
+    };
+    image.onerror = () => {
+      panel.classList.remove("has-photo");
+      image.hidden = true;
+      image.removeAttribute("src");
+    };
+    image.src = photoURL;
+    image.hidden = false;
+    const attribution = photo.photoAttribution || {};
+    const attributionURL = safeImageURL(attribution.uri || photo.mapsURL);
+    if (credit && attribution.displayName) {
+      credit.textContent = `Photo: ${attribution.displayName}`;
+      if (attributionURL) credit.href = attributionURL;
+      else credit.removeAttribute("href");
+      credit.hidden = false;
+    }
+  }
 
   function renderToday(now = new Date()) {
     if (!state.trip) {
+      photoSequence++;
       section.hidden = true;
       dashboard.innerHTML = "";
       return;
@@ -42,6 +75,7 @@ export function createToday({ showView }) {
     section.hidden = false;
     const context = tripTodayContext(state.trip, localISODate(now));
     if (context.phase === "undated") {
+      photoSequence++;
       document.getElementById("todayEyebrow").textContent = "GET TRIP-READY";
       document.getElementById("todayHeading").textContent = "Add your travel dates";
       dashboard.innerHTML = `<article class="today-setup-card"><span class="today-icon" aria-hidden="true">□</span><div><strong>Turn the itinerary into a dated plan</strong><p>Set the trip start date once. Every day and overnight hotel stop will line up automatically.</p></div><button class="primary-button" type="button" data-today-action="trip">Set trip date</button></article>`;
@@ -69,11 +103,12 @@ export function createToday({ showView }) {
       ["Drive", "driving", "today-route-button"]
     ].map(([label, mode, className]) => `<a class="${className}" href="${escapeHTML(currentLocationDirectionsURL(day, next, mode))}" target="_blank" rel="noopener" data-today-route="${mode}">${label}</a>`).join("") : "";
     dashboard.innerHTML = `<article class="today-card">
-      <div class="today-next"><span class="today-icon" aria-hidden="true">${next ? "↗" : "✓"}</span><div><small>${next ? "NEXT STOP" : "DAY COMPLETE"}</small><h3>${escapeHTML(next?.name || "All scheduled stops are complete")}</h3><p>${next ? `${escapeHTML(next.time || "Flexible")} · ${escapeHTML(next.location || day?.overnightLocation || state.trip.destination)}` : "Your next unfinished day will appear here automatically."}</p></div></div>
+      <div class="today-next"${next ? ' data-today-photo="true"' : ""}>${next ? '<img class="today-next-photo" alt="" loading="lazy" hidden />' : ""}<span class="today-icon" aria-hidden="true">${next ? "↗" : "✓"}</span><div><small>${next ? "NEXT STOP" : "DAY COMPLETE"}</small><h3>${escapeHTML(next?.name || "All scheduled stops are complete")}</h3><p>${next ? `${escapeHTML(next.time || "Flexible")} · ${escapeHTML(next.location || day?.overnightLocation || state.trip.destination)}` : "Your next unfinished day will appear here automatically."}</p>${next ? '<a class="today-next-photo-credit" target="_blank" rel="noopener noreferrer" hidden></a>' : ""}</div></div>
       <div class="today-facts"><div><small>REMAINING</small><strong>${remaining} activit${remaining === 1 ? "y" : "ies"}</strong></div><div><small>TONIGHT</small><strong>${escapeHTML(hotel?.name || (stop ? `Choose a hotel in ${stop.location}` : day?.overnightLocation || "No overnight stop"))}</strong></div></div>
       ${routeLinks ? `<div class="today-route-actions" aria-label="Directions from your current location">${routeLinks}</div>` : ""}
       <div class="today-secondary-actions"><button type="button" data-today-action="trip">Open Day ${day?.day || 1}</button><button type="button" data-today-action="hotels">${hotel ? "View hotel" : "Choose hotel"}</button></div>
     </article>`;
+    void hydrateNextStopPhoto(next, day);
   }
 
   dashboard.addEventListener("click", event => {

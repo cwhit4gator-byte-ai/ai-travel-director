@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=37";
+import { state } from "./state.js?v=38";
 
 export function initializeSafety({ showView }) {
   function setSafety(html) { document.getElementById("safetyOutput").innerHTML = html; }
