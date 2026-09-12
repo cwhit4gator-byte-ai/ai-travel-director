@@ -1,6 +1,6 @@
-import { findTripItem } from "./trip-model.js?v=38";
-import { loadActivityPhoto } from "./featured-place.js?v=38";
-import { safeImageURL } from "./ui.js?v=38";
+import { findTripItem } from "./trip-model.js?v=39";
+import { loadActivityPhoto } from "./featured-place.js?v=39";
+import { safeImageURL } from "./ui.js?v=39";
 
 const activityPhotoCache = new Map();
 let hydrationSequence = 0;

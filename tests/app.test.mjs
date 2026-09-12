@@ -120,6 +120,21 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.equal(startupErrors[0][0], "Firebase configuration is incomplete:");
     assert.equal(ui.safeImageURL(""), "");
   });
+  await t.test("bottom navigation uses consistent icons and announces the active page", async () => {
+    const navItems = document.querySelectorAll(".nav-item");
+    const home = navItems.find(item => item.dataset.viewLink === "homeView");
+    const itinerary = navItems.find(item => item.dataset.viewLink === "itineraryView");
+    assert.equal(navItems.length, 5);
+    assert.equal(document.querySelectorAll(".nav-icon").length, 5);
+    assert.equal(document.querySelectorAll(".nav-label").length, 5);
+    assert.equal(home.attributes["aria-current"], "page");
+    await navigate("itineraryView");
+    assert.equal(home.classList.contains("active"), false);
+    assert.equal("aria-current" in home.attributes, false);
+    assert.equal(itinerary.classList.contains("active"), true);
+    assert.equal(itinerary.attributes["aria-current"], "page");
+    await navigate("homeView");
+  });
   await t.test("transit advances, skips completed stops, restores an unchecked stop, and completes each day", async () => {
     await navigate("itineraryView");
     assert.equal(transitURL(1).searchParams.get("destination"), `National Museum, ${address}`);

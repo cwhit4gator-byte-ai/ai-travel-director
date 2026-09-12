@@ -1,19 +1,19 @@
-import { initializeCloud, observeAuth, trackAppEvent } from "./firebase-client.js?v=38";
-import { state, returningVisitor } from "./js/state.js?v=38";
-import { setCloudBanner, trackAppError } from "./js/ui.js?v=38";
-import { renderHome, renderRecommendations, initializeHome } from "./js/home.js?v=38";
-import { createFeaturedPlace } from "./js/featured-place.js?v=38";
-import { createPlanner } from "./js/planner.js?v=38";
-import { createHotels } from "./js/hotels.js?v=38";
-import { createItinerary } from "./js/itinerary.js?v=38";
-import { createCommunity } from "./js/community.js?v=38";
-import { createExplore } from "./js/explore.js?v=38";
-import { createProfile } from "./js/profile.js?v=38";
-import { initializeSafety } from "./js/safety.js?v=38";
-import { initializePWA } from "./js/pwa.js?v=38";
-import { createOnboarding } from "./js/onboarding.js?v=38";
-import { createToday } from "./js/today.js?v=38";
-import { createSmartAdd } from "./js/smart-add.js?v=38";
+import { initializeCloud, observeAuth, trackAppEvent } from "./firebase-client.js?v=39";
+import { state, returningVisitor } from "./js/state.js?v=39";
+import { setCloudBanner, trackAppError } from "./js/ui.js?v=39";
+import { renderHome, renderRecommendations, initializeHome } from "./js/home.js?v=39";
+import { createFeaturedPlace } from "./js/featured-place.js?v=39";
+import { createPlanner } from "./js/planner.js?v=39";
+import { createHotels } from "./js/hotels.js?v=39";
+import { createItinerary } from "./js/itinerary.js?v=39";
+import { createCommunity } from "./js/community.js?v=39";
+import { createExplore } from "./js/explore.js?v=39";
+import { createProfile } from "./js/profile.js?v=39";
+import { initializeSafety } from "./js/safety.js?v=39";
+import { initializePWA } from "./js/pwa.js?v=39";
+import { createOnboarding } from "./js/onboarding.js?v=39";
+import { createToday } from "./js/today.js?v=39";
+import { createSmartAdd } from "./js/smart-add.js?v=39";
 
 // Each feature owns its handlers. Only navigation and page refresh cross features.
 const planner = createPlanner({ renderAll });
@@ -39,7 +39,12 @@ function showView(viewId) {
   state.currentView = viewId;
   trackAppEvent("view_opened", { view_name: viewId.replace("View", "") });
   views.forEach(view => view.classList.toggle("active", view.id === viewId));
-  navItems.forEach(item => item.classList.toggle("active", item.dataset.viewLink === viewId));
+  navItems.forEach(item => {
+    const active = item.dataset.viewLink === viewId;
+    item.classList.toggle("active", active);
+    if (active) item.setAttribute("aria-current", "page");
+    else item.removeAttribute("aria-current");
+  });
   window.scrollTo({ top: 0, behavior: "smooth" });
   if (viewId === "plannerView") planner.initializeChat();
   if (viewId === "itineraryView") itinerary.renderItinerary();

@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b1830" />
   <meta name="description" content="AI-first travel planning, live itineraries, maps, traveler insights, and safety tools." />
   <title>AI Travel Director</title>
-  <link rel="manifest" href="manifest.json?v=38" />
+  <link rel="manifest" href="manifest.json?v=39" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=38" />
+  <link rel="stylesheet" href="styles.css?v=39" />
 </head>
 <body>
   <div class="app-shell">
@@ -274,11 +274,26 @@
     </main>
 
     <nav class="bottom-nav" aria-label="Primary navigation">
-      <button class="nav-item active" data-view-link="homeView"><span>⌂</span><small>Home</small></button>
-      <button class="nav-item" data-view-link="plannerView"><span>✦</span><small>Plan</small></button>
-      <button class="nav-item" data-view-link="exploreView"><span>⌖</span><small>Explore</small></button>
-      <button class="nav-item" data-view-link="itineraryView"><span>▦</span><small>Trip</small></button>
-      <button class="nav-item" data-view-link="safetyView"><span>◇</span><small>Safety</small></button>
+      <button class="nav-item active" type="button" data-view-link="homeView" aria-current="page">
+        <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M3 10.8 12 3l9 7.8"/><path d="M5.5 9.5V21h13V9.5M9.5 21v-6h5v6"/></svg></span>
+        <span class="nav-label">Home</span>
+      </button>
+      <button class="nav-item" type="button" data-view-link="plannerView">
+        <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m12 3 1.35 4.15a5.5 5.5 0 0 0 3.5 3.5L21 12l-4.15 1.35a5.5 5.5 0 0 0-3.5 3.5L12 21l-1.35-4.15a5.5 5.5 0 0 0-3.5-3.5L3 12l4.15-1.35a5.5 5.5 0 0 0 3.5-3.5L12 3Z"/></svg></span>
+        <span class="nav-label">Plan</span>
+      </button>
+      <button class="nav-item" type="button" data-view-link="exploreView">
+        <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9"/><path d="m15.4 8.6-2.2 4.6-4.6 2.2 2.2-4.6 4.6-2.2Z"/></svg></span>
+        <span class="nav-label">Explore</span>
+      </button>
+      <button class="nav-item" type="button" data-view-link="itineraryView">
+        <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V5h6v2M3 12h18M9 12v2M15 12v2"/></svg></span>
+        <span class="nav-label">Trip</span>
+      </button>
+      <button class="nav-item" type="button" data-view-link="safetyView">
+        <span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3 20 6v5c0 5-3.4 8.4-8 10-4.6-1.6-8-5-8-10V6l8-3Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></svg></span>
+        <span class="nav-label">Safety</span>
+      </button>
     </nav>
   </div>
 
@@ -400,7 +415,7 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="affiliate-config.js?v=38"></script>
-  <script type="module" src="app.js?v=38"></script>
+  <script src="affiliate-config.js?v=39"></script>
+  <script type="module" src="app.js?v=39"></script>
 </body>
 </html>
