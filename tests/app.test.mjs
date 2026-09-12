@@ -222,7 +222,7 @@ test("app modules preserve startup and feature interactions", async t => {
     state.mapQuery = state.trip.destination;
     await navigate("exploreView");
     await settle();
-    assert.match(element("routeStopList").innerHTML, /Full route/);
+    assert.doesNotMatch(element("routeStopList").innerHTML, /Full route/);
     assert.match(element("routeStopList").innerHTML, /Brno/);
     assert.deepEqual(geocodedAddresses.slice(-3), ["Prague", "Brno", "Vienna"]);
     assert.equal(markerCount >= 3, true);

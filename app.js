@@ -1,17 +1,17 @@
-import { initializeCloud, observeAuth, trackAppEvent } from "./firebase-client.js?v=33";
-import { state, returningVisitor } from "./js/state.js?v=33";
-import { setCloudBanner, trackAppError } from "./js/ui.js?v=33";
-import { renderHome, renderRecommendations, initializeHome } from "./js/home.js?v=33";
-import { createPlanner } from "./js/planner.js?v=33";
-import { createHotels } from "./js/hotels.js?v=33";
-import { createItinerary } from "./js/itinerary.js?v=33";
-import { createCommunity } from "./js/community.js?v=33";
-import { createExplore } from "./js/explore.js?v=33";
-import { createProfile } from "./js/profile.js?v=33";
-import { initializeSafety } from "./js/safety.js?v=33";
-import { initializePWA } from "./js/pwa.js?v=33";
-import { createOnboarding } from "./js/onboarding.js?v=33";
-import { createToday } from "./js/today.js?v=33";
+import { initializeCloud, observeAuth, trackAppEvent } from "./firebase-client.js?v=34";
+import { state, returningVisitor } from "./js/state.js?v=34";
+import { setCloudBanner, trackAppError } from "./js/ui.js?v=34";
+import { renderHome, renderRecommendations, initializeHome } from "./js/home.js?v=34";
+import { createPlanner } from "./js/planner.js?v=34";
+import { createHotels } from "./js/hotels.js?v=34";
+import { createItinerary } from "./js/itinerary.js?v=34";
+import { createCommunity } from "./js/community.js?v=34";
+import { createExplore } from "./js/explore.js?v=34";
+import { createProfile } from "./js/profile.js?v=34";
+import { initializeSafety } from "./js/safety.js?v=34";
+import { initializePWA } from "./js/pwa.js?v=34";
+import { createOnboarding } from "./js/onboarding.js?v=34";
+import { createToday } from "./js/today.js?v=34";
 
 // Each feature owns its handlers. Only navigation and page refresh cross features.
 const planner = createPlanner({ renderAll });

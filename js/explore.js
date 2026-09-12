@@ -1,9 +1,9 @@
-import { state, saveLocalState } from "./state.js?v=33";
-import { escapeHTML, safeImageURL, toast } from "./ui.js?v=33";
-import { scheduleSave } from "./persistence.js?v=33";
-import { trackAppEvent } from "../firebase-client.js?v=33";
-import { focusGooglePlaceResult, renderGoogleMap, renderGooglePlaceResultsMap, renderGoogleRouteMap, searchNearbyPlaces } from "../maps.js?v=33";
-import { currentDestination, tripRouteStops } from "./trip-model.js?v=33";
+import { state, saveLocalState } from "./state.js?v=34";
+import { escapeHTML, safeImageURL, toast } from "./ui.js?v=34";
+import { scheduleSave } from "./persistence.js?v=34";
+import { trackAppEvent } from "../firebase-client.js?v=34";
+import { focusGooglePlaceResult, renderGoogleMap, renderGooglePlaceResultsMap, renderGoogleRouteMap, searchNearbyPlaces } from "../maps.js?v=34";
+import { currentDestination, tripRouteStops } from "./trip-model.js?v=34";
 
 export function createExplore({ showView, renderHome, renderCommunityMapPicks }) {
   let mapRequestId = 0;
@@ -34,8 +34,7 @@ export function createExplore({ showView, renderHome, renderCommunityMapPicks })
       list.innerHTML = "";
       return;
     }
-    const buttons = [{ label: "Full route", value: "" }, ...stops.map(location => ({ label: location, value: location }))];
-    list.innerHTML = buttons.map((item, index) => `<button class="route-stop-button${item.value === selectedRouteStop ? " active" : ""}" type="button" data-route-stop-index="${index - 1}" aria-pressed="${item.value === selectedRouteStop}">${escapeHTML(item.label)}</button>`).join("");
+    list.innerHTML = stops.map((location, index) => `<button class="route-stop-button${location === selectedRouteStop ? " active" : ""}" type="button" data-route-stop-index="${index}" aria-pressed="${location === selectedRouteStop}">${escapeHTML(location)}</button>`).join("");
   }
 
   function mapElements() {
@@ -276,9 +275,8 @@ export function createExplore({ showView, renderHome, renderCommunityMapPicks })
     if (!button) return;
     const stops = currentRouteStops();
     const index = Number(button.dataset.routeStopIndex);
-    trackAppEvent("map_search", { method: index < 0 ? "route" : "route_stop" });
-    if (index < 0) { activeCategory = ""; updateRouteMap(stops); }
-    else if (stops[index] && activeCategory) showCategoryOptions(activeCategory, stops[index]);
+    trackAppEvent("map_search", { method: "route_stop" });
+    if (stops[index] && activeCategory) showCategoryOptions(activeCategory, stops[index]);
     else if (stops[index]) updateMap(stops[index]);
   });
   document.getElementById("placeList").addEventListener("click", event => {
