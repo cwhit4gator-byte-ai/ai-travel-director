@@ -39,13 +39,27 @@ let sharedText = "";
 Object.defineProperty(globalThis, "navigator", { configurable: true, value: { onLine: true, language: "en-US", serviceWorker: worker, clipboard: { writeText: async text => { sharedText = text; } } } });
 // Mock only the external Maps boundary, leaving feature modules and data intact.
 const geocodedAddresses = [];
+const placeSearchQueries = [];
 let markerCount = 0;
 let routeLineCount = 0;
 window.google = { maps: { importLibrary: async library => ({
-  maps: { Map: class { fitBounds() {} }, LatLngBounds: class { extend() {} }, Polyline: class { constructor() { routeLineCount++; } setMap() {} } },
+  maps: { Map: class { fitBounds() {} setCenter() {} setZoom() {} }, LatLngBounds: class { extend() {} }, Polyline: class { constructor() { routeLineCount++; } setMap() {} } },
   marker: { AdvancedMarkerElement: class { constructor() { markerCount++; } }, PinElement: class { constructor() { this.element = {}; } } },
   geocoding: { Geocoder: class { geocode({ address: query }, callback) { geocodedAddresses.push(query); const results = [{ formatted_address: query, geometry: { viewport: {}, location: {} }, address_components: [{ types: ["locality"], long_name: "Prague" }] }]; queueMicrotask(() => callback(results, "OK")); } } },
-  places: { Place: { searchByText: async () => ({ places: ["Four Seasons Hotel Prague", "Prague Hotel Two", "Prague Hotel Three"].map((name, index) => ({ id: String(index + 1), displayName: name, formattedAddress: "Veleslavínova 2a, Prague, Czechia", rating: 4.5, userRatingCount: 100 })) }) } }
+  places: { Place: { searchByText: async request => {
+    placeSearchQueries.push(request.textQuery);
+    const hotelSearch = request.includedType === "lodging";
+    const names = hotelSearch ? ["Four Seasons Hotel Prague", "Prague Hotel Two", "Prague Hotel Three"] : ["Brno Castle", "Moravian Museum", "Old Town Hall"];
+    return { places: names.map((name, index) => ({
+      id: `${hotelSearch ? "hotel" : "place"}-${index + 1}`,
+      displayName: name,
+      formattedAddress: hotelSearch ? "Veleslavínova 2a, Prague, Czechia" : `${index + 1} Historic Square, Brno, Czechia`,
+      rating: 4.5,
+      userRatingCount: 100 + index,
+      primaryTypeDisplayName: hotelSearch ? "Hotel" : "Historical landmark",
+      location: { lat: () => 49.19 + index * .01, lng: () => 16.60 + index * .01 }
+    })) };
+  } } }
 }[library]) } };
 const startupErrors = [];
 const originalError = console.error;
@@ -212,7 +226,19 @@ test("app modules preserve startup and feature interactions", async t => {
     await settle();
     assert.equal(element("mapSearchInput").value, "Brno");
     assert.match(element("routeStopList").innerHTML, /route-stop-button active[^>]*data-route-stop-index="1"/);
+    assert.equal(element("mapResultsSection").hidden, true);
+    await document.querySelector('[data-map-filter="historic architecture"]').emit("click");
+    await settle();
+    await settle();
+    assert.equal(element("mapResultsSection").hidden, false);
+    assert.match(element("mapResultsHeading").textContent, /History near Brno/);
+    assert.match(placeSearchQueries.at(-1), /historic sites and architecture in Brno/);
+    assert.match(element("placeList").innerHTML, /Brno Castle/);
     assert.match(element("placeList").innerHTML, /data-add-place/);
+    assert.match(element("placeList").innerHTML, />Add to trip</);
+    assert.match(element("placeList").innerHTML, />Directions</);
+    assert.match(element("placeList").innerHTML, /data-place-location="1 Historic Square, Brno, Czechia"/);
+    assert.match(element("mapLabelText").textContent, /3 History options in Brno/);
     assert.match(element("communityMapList").innerHTML, /Charles Bridge/);
     state.trip.itinerary.splice(2, 2);
     state.trip.destination = originalDestination;

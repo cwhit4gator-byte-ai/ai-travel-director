@@ -1,11 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import { memoryStorage } from "./support/dom.mjs";
 
 globalThis.localStorage = memoryStorage();
 Object.defineProperty(globalThis, "navigator", { configurable: true, value: { language: "en-US" } });
 
-const version = "31";
+const version = new URL(JSON.parse(await readFile(new URL("../manifest.json", import.meta.url))).start_url, "https://test.local").searchParams.get("app_version");
 const model = await import(new URL(`../js/trip-model.js?v=${version}`, import.meta.url));
 const hotels = await import(new URL(`../js/hotels.js?v=${version}`, import.meta.url));
 const today = await import(new URL(`../js/today.js?v=${version}`, import.meta.url));

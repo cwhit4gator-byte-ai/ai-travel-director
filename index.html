@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b1830" />
   <meta name="description" content="AI-first travel planning, live itineraries, maps, traveler insights, and safety tools." />
   <title>AI Travel Director</title>
-  <link rel="manifest" href="manifest.json?v=31" />
+  <link rel="manifest" href="manifest.json?v=32" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=31" />
+  <link rel="stylesheet" href="styles.css?v=32" />
 </head>
 <body>
   <div class="app-shell">
@@ -125,25 +125,25 @@
           <button type="submit">Search</button>
         </form>
         <div class="map-filters" aria-label="Map categories">
-          <button class="filter-chip active" data-map-filter="top sights">Top sights</button>
-          <button class="filter-chip" data-map-filter="historic architecture">History</button>
-          <button class="filter-chip" data-map-filter="local restaurants no alcohol">Food</button>
-          <button class="filter-chip" data-map-filter="train station">Transit</button>
-          <button class="filter-chip" data-map-filter="quiet parks">Quiet</button>
+          <button class="filter-chip" type="button" data-map-filter="top sights">Top sights</button>
+          <button class="filter-chip" type="button" data-map-filter="historic architecture">History</button>
+          <button class="filter-chip" type="button" data-map-filter="local restaurants no alcohol">Food</button>
+          <button class="filter-chip" type="button" data-map-filter="train station">Transit</button>
+          <button class="filter-chip" type="button" data-map-filter="quiet parks">Quiet</button>
         </div>
         <div id="routeStopPicker" class="route-stop-picker" hidden>
           <div class="route-stop-heading"><strong>Trip stops</strong><span>Select a city to explore nearby</span></div>
           <div id="routeStopList" class="route-stop-list" aria-label="Itinerary map locations"></div>
         </div>
+        <section id="mapResultsSection" class="map-results map-results-panel" aria-live="polite" hidden>
+          <div class="section-heading compact"><h2 id="mapResultsHeading">Places to consider</h2><span id="mapResultCount" class="result-count"></span></div>
+          <div id="placeList" class="place-list"></div>
+        </section>
         <div class="map-frame-wrap">
           <div id="mapCanvas" class="map-canvas" role="region" aria-label="Interactive Google map"></div>
           <iframe id="mapFallback" title="Google Map" loading="lazy" referrerpolicy="no-referrer-when-downgrade" allowfullscreen hidden></iframe>
           <div class="map-label"><span class="live-dot"></span><span id="mapLabelText">Exploring your next destination</span></div>
         </div>
-        <section class="map-results">
-          <div class="section-heading compact"><h2>Places to consider</h2><span id="mapResultCount" class="result-count"></span></div>
-          <div id="placeList" class="place-list"></div>
-        </section>
         <section class="map-results community-map-results">
           <div class="section-heading compact"><div><p class="eyebrow">FROM TRAVELERS</p><h2>Community map picks</h2></div></div>
           <div id="communityMapList" class="place-list"></div>
@@ -365,7 +365,7 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="affiliate-config.js?v=31"></script>
-  <script type="module" src="app.js?v=31"></script>
+  <script src="affiliate-config.js?v=32"></script>
+  <script type="module" src="app.js?v=32"></script>
 </body>
 </html>
