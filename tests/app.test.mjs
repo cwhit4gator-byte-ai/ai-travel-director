@@ -87,6 +87,7 @@ const model = await import(moduleURL("trip-model"));
 const featuredPlaceModel = await import(moduleURL("featured-place"));
 const itineraryPhotoModel = await import(moduleURL("itinerary-photos"));
 const smartAddModel = await import(moduleURL("smart-add"));
+const tripAdjustmentModel = await import(moduleURL("trip-adjustments"));
 const ui = await import(moduleURL("ui"));
 const element = id => document.getElementById(id);
 const navigate = async view => {
@@ -230,12 +231,39 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.equal(element("todayStatusBadge").attributes["data-phase"], "upcoming");
     assert.match(element("todayHeading").textContent, /Day 1 is ready/);
   });
-  await t.test("Today quick actions open the planner and complete the next stop", async () => {
+  await t.test("Today adjustments preview one protected change before applying it", async () => {
     await navigate("homeView");
     const next = directions.nextIncompleteTripStop(state.trip.itinerary[0]);
+    const originalStop = structuredClone(next);
+    const originalHotels = structuredClone(state.trip.hotelSelections || {});
+    state.trip.hotelSelections = { ...originalHotels, "Prague::1-2": { name: "Protected Hotel" } };
+    const protectedHotels = structuredClone(state.trip.hotelSelections);
+    const completedStops = state.trip.itinerary[0].items.filter(item => item.done).map(item => item.id);
+    assert.equal(tripAdjustmentModel.shiftTime("11:30 PM"), "12:30 AM");
     await element("todayDashboard").emit("click", { target: target({ "data-today-action": "change" }) });
+    assert.equal(element("tripAdjustmentDialog").open, true);
+    assert.match(element("tripAdjustmentContext").textContent, new RegExp(next.name));
+    await element("tripAdjustmentReasons").emit("click", { target: target({ "data-adjustment-reason": "weather" }) });
+    assert.equal(element("tripAdjustmentReasonStep").hidden, true);
+    assert.equal(element("tripAdjustmentReviewStep").hidden, false);
+    assert.match(element("tripAdjustmentAfterName").textContent, /Indoor highlight/);
+    assert.equal(next.name, originalStop.name);
+    await element("applyTripAdjustment").emit("click");
+    assert.match(next.name, /Indoor highlight/);
+    assert.equal(element("tripAdjustmentDialog").open, false);
+    assert.deepEqual(state.trip.itinerary[0].items.filter(item => item.done).map(item => item.id), completedStops);
+    assert.deepEqual(state.trip.hotelSelections, protectedHotels);
+    assert.match(element("toast").textContent, /rest of your trip is unchanged/);
+
+    for (const key of Object.keys(next)) delete next[key];
+    Object.assign(next, originalStop);
+    state.trip.hotelSelections = originalHotels;
+    await navigate("homeView");
+    await element("todayDashboard").emit("click", { target: target({ "data-today-action": "change" }) });
+    await element("tripAdjustmentReasons").emit("click", { target: target({ "data-adjustment-reason": "custom" }) });
     assert.equal(state.currentView, "plannerView");
-    assert.equal(element("chatInput").value, `Change ${next.name} on Day 1`);
+    assert.equal(element("chatInput").value, `Change ${next.name} on Day 1: `);
+
     await navigate("homeView");
     await element("todayDashboard").emit("click", { target: target({ "data-today-action": "complete" }) });
     assert.equal(next.done, true);

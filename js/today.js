@@ -1,10 +1,10 @@
-import { state } from "./state.js?v=44";
-import { escapeHTML, safeImageURL, toast } from "./ui.js?v=44";
-import { scheduleSave } from "./persistence.js?v=44";
-import { trackAppEvent } from "../firebase-client.js?v=44";
-import { tripDateForDay, formatTripDate, tripDayNumberForDate, tripOvernightStops } from "./trip-model.js?v=44";
-import { nextIncompleteTripStop, currentLocationDirectionsURL, preferredTripTravelMode } from "./directions.js?v=44";
-import { loadCachedActivityPhoto } from "./itinerary-photos.js?v=44";
+import { state } from "./state.js?v=45";
+import { escapeHTML, safeImageURL, toast } from "./ui.js?v=45";
+import { scheduleSave } from "./persistence.js?v=45";
+import { trackAppEvent } from "../firebase-client.js?v=45";
+import { tripDateForDay, formatTripDate, tripDayNumberForDate, tripOvernightStops } from "./trip-model.js?v=45";
+import { nextIncompleteTripStop, currentLocationDirectionsURL, preferredTripTravelMode } from "./directions.js?v=45";
+import { loadCachedActivityPhoto } from "./itinerary-photos.js?v=45";
 
 export function localISODate(now = new Date()) {
   const year = now.getFullYear();
@@ -31,7 +31,7 @@ export function tripTodayContext(trip, today = localISODate()) {
   };
 }
 
-export function createToday({ showView }) {
+export function createToday({ showView, openTripAdjustment }) {
   const dashboard = document.getElementById("todayDashboard");
   const section = document.getElementById("todaySection");
   const statusBadge = document.getElementById("todayStatusBadge");
@@ -120,7 +120,7 @@ export function createToday({ showView }) {
     const directionsURL = next ? currentLocationDirectionsURL(day, next, travelMode) : "";
     dashboard.innerHTML = `<article class="today-card${next ? "" : " is-complete"}">
       <div class="today-next${next ? "" : " is-complete"}"${next ? ' data-today-photo="true"' : ""}>${next ? '<img class="today-next-photo" alt="" loading="lazy" hidden />' : ""}<span class="today-icon" aria-hidden="true">${next ? "↗" : "✓"}</span><div><small>${next ? "NEXT STOP" : "DAY COMPLETE"}</small><h3>${escapeHTML(next?.name || "All scheduled stops are complete")}</h3><p>${next ? `${escapeHTML(next.time || "Flexible")} · ${escapeHTML(next.location || day?.overnightLocation || state.trip.destination)}` : "Your next unfinished day will appear here automatically."}</p>${next ? '<a class="today-next-photo-credit" target="_blank" rel="noopener noreferrer" hidden></a>' : ""}</div></div>
-      ${next ? `<div class="today-quick-actions" aria-label="Next stop actions"><a class="today-quick-action directions" href="${escapeHTML(directionsURL)}" target="_blank" rel="noopener" data-today-route="${travelMode}" aria-label="Open ${escapeHTML(travelModeLabel)} directions to ${escapeHTML(next.name)}"><span aria-hidden="true">↗</span><strong>Directions</strong><small>${travelModeLabel}</small></a><button class="today-quick-action complete" type="button" data-today-action="complete" aria-label="Mark ${escapeHTML(next.name)} complete"><span aria-hidden="true">✓</span><strong>Complete</strong><small>Mark done</small></button><button class="today-quick-action change" type="button" data-today-action="change" aria-label="Ask AI to change ${escapeHTML(next.name)}"><span aria-hidden="true">✦</span><strong>Change</strong><small>Ask AI</small></button></div>` : ""}
+      ${next ? `<div class="today-quick-actions" aria-label="Next stop actions"><a class="today-quick-action directions" href="${escapeHTML(directionsURL)}" target="_blank" rel="noopener" data-today-route="${travelMode}" aria-label="Open ${escapeHTML(travelModeLabel)} directions to ${escapeHTML(next.name)}"><span aria-hidden="true">↗</span><strong>Directions</strong><small>${travelModeLabel}</small></a><button class="today-quick-action complete" type="button" data-today-action="complete" aria-label="Mark ${escapeHTML(next.name)} complete"><span aria-hidden="true">✓</span><strong>Complete</strong><small>Mark done</small></button><button class="today-quick-action change" type="button" data-today-action="change" aria-label="Adjust ${escapeHTML(next.name)}"><span aria-hidden="true">✦</span><strong>Change</strong><small>Adjust plan</small></button></div>` : ""}
       <div class="today-progress" aria-label="${completed} of ${activities.length} scheduled activities complete"><div class="today-progress-copy"><span>Today's progress</span><strong>${activities.length ? `${completed} of ${activities.length} complete` : "No activities scheduled"}</strong></div><div class="today-progress-bar" aria-hidden="true"><span style="width:${progressPercent}%"></span></div>${timeline ? `<ol class="today-mini-timeline">${timeline}</ol>` : ""}</div>
       <div class="today-facts"><div><small>REMAINING</small><strong>${remaining} activit${remaining === 1 ? "y" : "ies"}</strong></div><div><small>TONIGHT</small><strong>${escapeHTML(hotel?.name || (stop ? `Choose a hotel in ${stop.location}` : day?.overnightLocation || "No overnight stop"))}</strong></div></div>
       <div class="today-secondary-actions"><button type="button" data-today-action="trip">Open Day ${day?.day || 1}</button><button type="button" data-today-action="hotels">${hotel ? "View hotel" : "Choose hotel"}</button></div>
@@ -146,12 +146,7 @@ export function createToday({ showView }) {
     }
     if (action.dataset.todayAction === "change") {
       const context = tripTodayContext(state.trip);
-      showView("plannerView");
-      const input = document.getElementById("chatInput");
-      if (input && context.next) {
-        input.value = `Change ${context.next.name || "my next stop"} on Day ${context.day?.day || 1}`;
-        input.focus();
-      }
+      openTripAdjustment?.(context);
       trackAppEvent("today_change_requested", { day: Number(context.day?.day || 1) });
       return;
     }

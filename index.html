@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b1830" />
   <meta name="description" content="AI-first travel planning, live itineraries, maps, traveler insights, and safety tools." />
   <title>AI Travel Director</title>
-  <link rel="manifest" href="manifest.json?v=44" />
+  <link rel="manifest" href="manifest.json?v=45" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=44" />
+  <link rel="stylesheet" href="styles.css?v=45" />
 </head>
 <body>
   <div class="app-shell">
@@ -391,6 +391,49 @@
     </form>
   </dialog>
 
+  <dialog id="tripAdjustmentDialog" class="action-dialog trip-adjustment-dialog" aria-labelledby="tripAdjustmentTitle" aria-describedby="tripAdjustmentContext">
+    <div class="action-dialog-shell trip-adjustment-shell">
+      <div class="section-heading compact">
+        <div><p class="eyebrow">CHANGE NEXT STOP</p><h2 id="tripAdjustmentTitle">What changed?</h2></div>
+        <button id="closeTripAdjustment" class="round-button" type="button" aria-label="Close trip adjustment">×</button>
+      </div>
+      <section id="tripAdjustmentReasonStep" class="trip-adjustment-step">
+        <p id="tripAdjustmentContext" class="dialog-context"></p>
+        <div id="tripAdjustmentReasons" class="trip-adjustment-reasons" aria-label="Choose why the plan needs to change">
+          <button type="button" data-adjustment-reason="late"><span class="adjustment-reason-icon late" aria-hidden="true">◷</span><strong>I’m running late</strong><small>Shift the timing</small></button>
+          <button type="button" data-adjustment-reason="closed"><span class="adjustment-reason-icon closed" aria-hidden="true">×</span><strong>This place is closed</strong><small>Find an alternative</small></button>
+          <button type="button" data-adjustment-reason="weather"><span class="adjustment-reason-icon weather" aria-hidden="true">☂</span><strong>Weather changed</strong><small>Move the plan indoors</small></button>
+          <button type="button" data-adjustment-reason="walking"><span class="adjustment-reason-icon walking" aria-hidden="true">↔</span><strong>Reduce walking</strong><small>Stay closer or take transit</small></button>
+          <button type="button" data-adjustment-reason="replace"><span class="adjustment-reason-icon replace" aria-hidden="true">✦</span><strong>Replace this stop</strong><small>Try something different</small></button>
+          <button type="button" data-adjustment-reason="custom"><span class="adjustment-reason-icon custom" aria-hidden="true">•••</span><strong>Something else</strong><small>Describe it to the planner</small></button>
+        </div>
+        <p class="trip-adjustment-protection"><span aria-hidden="true">✓</span> Completed stops and hotel selections stay unchanged.</p>
+      </section>
+      <section id="tripAdjustmentReviewStep" class="trip-adjustment-step" hidden>
+        <p class="dialog-context">Review the suggestion before it changes your itinerary.</p>
+        <div class="trip-adjustment-comparison">
+          <article class="adjustment-plan-card before">
+            <small>CURRENT PLAN</small>
+            <strong id="tripAdjustmentBeforeName"></strong>
+            <span id="tripAdjustmentBeforeDetails"></span>
+          </article>
+          <span class="adjustment-arrow" aria-hidden="true">↓</span>
+          <article class="adjustment-plan-card after">
+            <div><small>UPDATED PLAN</small><span id="tripAdjustmentReasonBadge"></span></div>
+            <strong id="tripAdjustmentAfterName"></strong>
+            <span id="tripAdjustmentAfterDetails"></span>
+            <p id="tripAdjustmentAfterNote"></p>
+          </article>
+        </div>
+        <p class="trip-adjustment-protection"><span aria-hidden="true">✓</span> Only this unfinished stop will change. Completed activities and lodging are protected.</p>
+        <div class="trip-adjustment-actions">
+          <button id="backTripAdjustment" class="secondary-button" type="button">Back</button>
+          <button id="applyTripAdjustment" class="primary-button" type="button">Apply update</button>
+        </div>
+      </section>
+    </div>
+  </dialog>
+
 
   <dialog id="onboardingDialog" class="onboarding-dialog" aria-labelledby="onboardingTitle">
     <div class="onboarding-shell">
@@ -424,7 +467,7 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="affiliate-config.js?v=44"></script>
-  <script type="module" src="app.js?v=44"></script>
+  <script src="affiliate-config.js?v=45"></script>
+  <script type="module" src="app.js?v=45"></script>
 </body>
 </html>
