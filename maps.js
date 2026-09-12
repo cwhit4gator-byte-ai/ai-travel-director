@@ -143,6 +143,89 @@ export async function renderGoogleMap(element, query) {
   return renderGoogleRouteMap(element, [query]);
 }
 
+export async function renderGooglePlaceResultsMap(element, places) {
+  if (!element) throw new Error("The map container is missing.");
+  const sequence = ++renderSequence;
+  const [mapsLibrary, markerLibrary] = await loadLibraries();
+  const { Map, LatLngBounds } = mapsLibrary;
+  const { AdvancedMarkerElement, PinElement } = markerLibrary;
+  const usable = (places || []).filter(place => Number.isFinite(place.latitude) && Number.isFinite(place.longitude));
+  if (!usable.length) throw new Error("No mapped place results were found.");
+
+  map ||= new Map(element, {
+    center: { lat: usable[0].latitude, lng: usable[0].longitude },
+    zoom: 13,
+    mapId: googleMapsConfig.mapId,
+    mapTypeControl: false,
+    streetViewControl: false,
+    fullscreenControl: true
+  });
+  if (sequence !== renderSequence) return `${usable.length} options found`;
+  markers.forEach(existing => { existing.map = null; });
+  if (routeLine) routeLine.setMap(null);
+  routeLine = null;
+  markers = usable.map((place, index) => {
+    const pin = PinElement ? new PinElement({ glyph: String(index + 1), glyphColor: "#ffffff", background: "#246bfd", borderColor: "#0b1830" }) : null;
+    return new AdvancedMarkerElement({ map, position: { lat: place.latitude, lng: place.longitude }, title: `${index + 1}. ${place.name}`, ...(pin?.element ? { content: pin.element } : {}) });
+  });
+  if (usable.length > 1 && LatLngBounds) {
+    const bounds = new LatLngBounds();
+    usable.forEach(place => bounds.extend({ lat: place.latitude, lng: place.longitude }));
+    map.fitBounds(bounds, 54);
+  } else {
+    map.setCenter?.({ lat: usable[0].latitude, lng: usable[0].longitude });
+    map.setZoom?.(14);
+  }
+  return `${usable.length} options found`;
+}
+
+export async function focusGooglePlaceResult(element, place) {
+  if (!element) throw new Error("The map container is missing.");
+  const latitude = Number(place?.latitude);
+  const longitude = Number(place?.longitude);
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) throw new Error("This place does not include a map location.");
+  if (!map) await renderGooglePlaceResultsMap(element, [place]);
+  const position = { lat: latitude, lng: longitude };
+  if (typeof map.panTo === "function") map.panTo(position);
+  else map.setCenter?.(position);
+  map.setZoom?.(16);
+  return place.name || place.address || "Selected place";
+}
+
+export async function searchNearbyPlaces(location, category = "top sights", maximum = 6) {
+  await loadLibraries();
+  const searchIntent = {
+    "top sights": "top tourist attractions",
+    "historic architecture": "historic sites and architecture",
+    "local restaurants no alcohol": "well-rated local restaurants",
+    "train station": "train stations and public transit",
+    "quiet parks": "quiet parks and gardens"
+  }[category] || String(category || "top tourist attractions");
+  const { Place } = await window.google.maps.importLibrary("places");
+  const response = await Promise.race([
+    Place.searchByText({
+      textQuery: `${searchIntent} in ${location}`,
+      fields: ["id", "displayName", "formattedAddress", "shortFormattedAddress", "location", "rating", "userRatingCount", "photos", "googleMapsURI", "priceLevel", "primaryTypeDisplayName"],
+      maxResultCount: Math.max(3, Math.min(10, Number(maximum) || 6)),
+      language: "en-US"
+    }),
+    watchForAuthenticationFailure()
+  ]);
+  return (response.places || []).map(place => ({
+    id: place.id || "",
+    name: place.displayName || "Place",
+    address: place.formattedAddress || place.shortFormattedAddress || location,
+    category: place.primaryTypeDisplayName || searchIntent,
+    rating: Number(place.rating || 0),
+    reviewCount: Number(place.userRatingCount || 0),
+    priceLevel: String(place.priceLevel || ""),
+    latitude: typeof place.location?.lat === "function" ? place.location.lat() : Number(place.location?.lat),
+    longitude: typeof place.location?.lng === "function" ? place.location.lng() : Number(place.location?.lng),
+    photoURL: place.photos?.[0]?.getURI ? place.photos[0].getURI({ maxWidth: 400, maxHeight: 300 }) : "",
+    mapsURL: place.googleMapsURI || ""
+  })).filter(place => place.id && place.name);
+}
+
 
 export async function resolvePlaceCity(query) {
   const libraries = await loadLibraries();

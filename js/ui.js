@@ -1,4 +1,4 @@
-import { trackAppEvent } from "../firebase-client.js?v=31";
+import { trackAppEvent } from "../firebase-client.js?v=34";
 
 export function readJSON(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key) || "null") ?? fallback; }
@@ -11,7 +11,9 @@ export function escapeHTML(value) {
 
 export function safeImageURL(value) {
   try {
-    const url = new URL(String(value || ""), window.location.href);
+    const rawValue = String(value || "").trim();
+    if (!rawValue) return "";
+    const url = new URL(rawValue, window.location.href);
     return url.protocol === "https:" ? url.href : "";
   } catch {
     return "";
