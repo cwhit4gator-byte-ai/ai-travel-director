@@ -1,5 +1,5 @@
-import { toast } from "./ui.js?v=37";
-import { trackAppEvent } from "../firebase-client.js?v=37";
+import { toast } from "./ui.js?v=38";
+import { trackAppEvent } from "../firebase-client.js?v=38";
 
 export function initializePWA() {
   let deferredInstallPrompt = null;
@@ -10,7 +10,7 @@ export function initializePWA() {
   window.addEventListener("offline", updateConnectionState);
   window.addEventListener("beforeinstallprompt", event => { event.preventDefault(); deferredInstallPrompt = event; installButton.hidden = false; trackAppEvent("pwa_install_prompt", { status: "available" }); });
   installButton.addEventListener("click", async () => { if (!deferredInstallPrompt) return toast("Use your browser menu to add this app to your home screen"); deferredInstallPrompt.prompt(); const choice = await deferredInstallPrompt.userChoice; trackAppEvent("pwa_install_result", { result: choice.outcome }); deferredInstallPrompt = null; installButton.hidden = true; });
-  const APP_VERSION = "37";
+  const APP_VERSION = "38";
   async function registerServiceWorker() {
     let refreshing = false;
     navigator.serviceWorker.addEventListener("controllerchange", () => {

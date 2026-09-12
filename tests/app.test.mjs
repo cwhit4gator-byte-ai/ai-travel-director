@@ -196,6 +196,9 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.match(element("todayDashboard").innerHTML, /data-today-route="transit"/);
     assert.match(element("todayDashboard").innerHTML, /data-today-route="walking"/);
     assert.match(element("todayDashboard").innerHTML, /data-today-route="driving"/);
+    assert.match(element("todayDashboard").innerHTML, /data-today-photo="true"/);
+    assert.match(element("todayDashboard").innerHTML, /class="today-next-photo"/);
+    assert.match(element("todayDashboard").innerHTML, /class="today-next-photo-credit"/);
     assert.match(element("todayHeading").textContent, /Day 1 is ready/);
   });
   await t.test("hotels retain grouped nights, dates, country, booking links, and currency", async () => {
