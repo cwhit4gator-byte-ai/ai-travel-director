@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b1830" />
   <meta name="description" content="AI-first travel planning, live itineraries, maps, traveler insights, and safety tools." />
   <title>AI Travel Director</title>
-  <link rel="manifest" href="manifest.json?v=30" />
+  <link rel="manifest" href="manifest.json?v=31" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=30" />
+  <link rel="stylesheet" href="styles.css?v=31" />
 </head>
 <body>
   <div class="app-shell">
@@ -24,7 +24,7 @@
     </header>
 
     <div id="connectionBanner" class="banner warning" hidden>Offline · Your saved trip is still available.</div>
-    <div id="cloudBanner" class="banner cloud">Local travel mode · Cloud connection is ready to configure.</div>
+    <div id="cloudBanner" class="banner cloud"><span id="cloudBannerText">Local travel mode · Cloud connection is ready to configure.</span><button id="cloudConnectButton" class="banner-action" type="button" hidden>Connect cloud</button></div>
 
     <main>
       <section id="homeView" class="view active" aria-labelledby="homeHeading">
@@ -130,6 +130,10 @@
           <button class="filter-chip" data-map-filter="local restaurants no alcohol">Food</button>
           <button class="filter-chip" data-map-filter="train station">Transit</button>
           <button class="filter-chip" data-map-filter="quiet parks">Quiet</button>
+        </div>
+        <div id="routeStopPicker" class="route-stop-picker" hidden>
+          <div class="route-stop-heading"><strong>Trip stops</strong><span>Select a city to explore nearby</span></div>
+          <div id="routeStopList" class="route-stop-list" aria-label="Itinerary map locations"></div>
         </div>
         <div class="map-frame-wrap">
           <div id="mapCanvas" class="map-canvas" role="region" aria-label="Interactive Google map"></div>
@@ -361,7 +365,7 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="affiliate-config.js?v=30"></script>
-  <script type="module" src="app.js?v=30"></script>
+  <script src="affiliate-config.js?v=31"></script>
+  <script type="module" src="app.js?v=31"></script>
 </body>
 </html>

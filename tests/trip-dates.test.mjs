@@ -5,7 +5,7 @@ import { memoryStorage } from "./support/dom.mjs";
 globalThis.localStorage = memoryStorage();
 Object.defineProperty(globalThis, "navigator", { configurable: true, value: { language: "en-US" } });
 
-const version = "30";
+const version = "31";
 const model = await import(new URL(`../js/trip-model.js?v=${version}`, import.meta.url));
 const hotels = await import(new URL(`../js/hotels.js?v=${version}`, import.meta.url));
 const today = await import(new URL(`../js/today.js?v=${version}`, import.meta.url));
@@ -39,6 +39,15 @@ test("trip calendar groups consecutive cities and keeps manual hotel dates", () 
   assert.equal(trip.hotelStayDates["Prague::1-2"].checkIn, "2027-10-01");
   assert.equal(trip.hotelStayDates["Prague::1-2"].checkOut, "2027-10-03");
   assert.equal(trip.hotelStayDates["Vienna::3-4"].checkIn, "2027-09-10");
+});
+
+test("Explore derives each unique city from a route in order", () => {
+  const routeTrip = {
+    destination: "Prague–Brno–Vienna–Bratislava–Budapest",
+    itinerary: [{ overnightLocation: "Prague" }, { overnightLocation: "Prague" }, { overnightLocation: "Vienna" }]
+  };
+  assert.deepEqual(model.tripRouteStops(routeTrip), ["Prague", "Brno", "Vienna", "Bratislava", "Budapest"]);
+  assert.deepEqual(model.tripRouteStops({ destination: "Czechia", itinerary: [{ overnightLocation: "Prague" }, { overnightLocation: "Prague" }, { overnightLocation: "Brno" }] }), ["Prague", "Brno"]);
 });
 
 test("Today advances to the current or next unfinished itinerary day", () => {

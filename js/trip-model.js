@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=30";
+import { state } from "./state.js?v=31";
 
 export const activityCatalog = [
   { name: "Old town architecture walk", category: "Architecture", time: "9:00 AM", cost: 0, icon: "⌂", note: "Begin early for quiet streets and softer light." },
@@ -47,6 +47,32 @@ export function tripOvernightStops() {
   });
   if (stops.length) return stops;
   return (state.trip.overnightLocations || []).map((location, index) => ({ id: `${location}::${index + 1}`, location: String(location), days: [], startDay: index + 1, endDay: index + 1 }));
+}
+
+function destinationRouteParts(value) {
+  return String(value || "")
+    .split(/\s*(?:→|➜|⟶|–|—)\s*|\s+(?:->|>)\s+/u)
+    .map(part => part.trim())
+    .filter(Boolean);
+}
+
+export function tripRouteStops(trip = state.trip) {
+  if (!trip) return [];
+  const destinationParts = destinationRouteParts(trip.destination);
+  const itineraryLocations = (trip.itinerary || []).map(day => {
+    const explicit = String(day?.overnightLocation || day?.location || "").trim();
+    if (explicit) return explicit;
+    return [...(day?.items || [])].reverse().map(item => String(item?.location || item?.city || "").trim()).find(Boolean) || "";
+  }).filter(Boolean);
+  const savedLocations = (trip.overnightLocations || []).map(location => String(location || "").trim()).filter(Boolean);
+  const candidates = destinationParts.length > 1 ? destinationParts : (itineraryLocations.length ? itineraryLocations : savedLocations);
+  const seen = new Set();
+  return candidates.filter(location => {
+    const key = location.toLocaleLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  }).slice(0, 10);
 }
 
 export function normalizeISODate(value) {
