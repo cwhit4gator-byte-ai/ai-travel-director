@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=27";
-import { escapeHTML, safeImageURL, toast } from "./ui.js?v=27";
-import { scheduleSave } from "./persistence.js?v=27";
-import { loadCommunityFeed, publishCommunityExperience, loadCommunityActions, setCommunityHelpful, reportCommunityExperience, loadPublicTravelerProfile, requestAITrip, uploadExperiencePhotos, requestPhotoAnalysis, trackAppEvent } from "../firebase-client.js?v=27";
-import { normalizeAITrip, communityTripItems } from "./trip-model.js?v=27";
-import { communityItems, communityExperienceById } from "./community-data.js?v=27";
+import { state } from "./state.js?v=28";
+import { escapeHTML, safeImageURL, toast } from "./ui.js?v=28";
+import { scheduleSave } from "./persistence.js?v=28";
+import { loadCommunityFeed, publishCommunityExperience, loadCommunityActions, setCommunityHelpful, reportCommunityExperience, loadPublicTravelerProfile, requestAITrip, uploadExperiencePhotos, requestPhotoAnalysis, trackAppEvent } from "../firebase-client.js?v=28";
+import { normalizeAITrip, communityTripItems } from "./trip-model.js?v=28";
+import { communityItems, communityExperienceById } from "./community-data.js?v=28";
 
 export function createCommunity({ showView, renderAll, renderItinerary }) {
   function filteredCommunityItems() {
@@ -279,7 +279,9 @@ export function createCommunity({ showView, renderAll, renderItinerary }) {
       }));
       const result = await requestAITrip({ request, profile: state.profile, communityInsights });
       const originalRequest = state.trip.sourceRequest || request;
-      state.trip = normalizeAITrip(result, originalRequest);
+      const startDate = state.trip.startDate || "";
+      const hotelStayDates = state.trip.hotelStayDates || {};
+      state.trip = { ...normalizeAITrip(result, originalRequest), startDate, hotelStayDates };
       scheduleSave();
       renderAll();
       showView("itineraryView");

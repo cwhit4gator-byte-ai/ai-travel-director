@@ -1,9 +1,26 @@
-import { state } from "./state.js?v=27";
-import { escapeHTML, safeImageURL, normalizeInterests, toast, trackAppError } from "./ui.js?v=27";
-import { scheduleSave } from "./persistence.js?v=27";
-import { requestAITrip, trackAppEvent } from "../firebase-client.js?v=27";
-import { resolvePlaceCity, searchNearbyHotels } from "../maps.js?v=27";
-import { currentDestination, tripOvernightStops, normalizeAITrip } from "./trip-model.js?v=27";
+import { state } from "./state.js?v=28";
+import { escapeHTML, safeImageURL, normalizeInterests, toast, trackAppError } from "./ui.js?v=28";
+import { scheduleSave } from "./persistence.js?v=28";
+import { requestAITrip, trackAppEvent } from "../firebase-client.js?v=28";
+import { resolvePlaceCity, searchNearbyHotels } from "../maps.js?v=28";
+import { currentDestination, tripOvernightStops, normalizeAITrip, addDaysToISODate, tripDateForDay } from "./trip-model.js?v=28";
+
+export function automaticHotelDates(stop, trip = state.trip) {
+  if (!stop) return { checkIn: "", checkOut: "" };
+  return {
+    checkIn: tripDateForDay(stop.startDay, trip),
+    checkOut: tripDateForDay(Number(stop.endDay || stop.startDay) + 1, trip)
+  };
+}
+
+export function reconcileHotelStayDates(trip, stops) {
+  if (!trip) return {};
+  trip.hotelStayDates ||= {};
+  stops.forEach(stop => {
+    if (!trip.hotelStayDates[stop.id]?.manualDates) trip.hotelStayDates[stop.id] = { ...automaticHotelDates(stop, trip), manualDates: false };
+  });
+  return trip.hotelStayDates;
+}
 
 export function createHotels({ showView, renderAll, bindViewLinks }) {
   const hotelPlaceCache = new Map();
@@ -86,12 +103,37 @@ export function createHotels({ showView, renderAll, bindViewLinks }) {
     const base = Math.max(75, Math.min(450, Math.round((tripBudget * .35) / Math.max(1, days - 1) * Math.min(1.15, locationCount))));
     return Math.round(base * multiplier);
   }
-  function addDaysToISODate(value, days) {
-    const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!match) return "";
-    const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
-    date.setUTCDate(date.getUTCDate() + Math.max(1, Number(days) || 1));
-    return date.toISOString().slice(0, 10);
+  function hotelStayDateStore() {
+    if (!state.trip) return {};
+    state.trip.hotelStayDates ||= {};
+    return state.trip.hotelStayDates;
+  }
+  function storeCurrentHotelDates(stop = selectedOvernightStop(), manualDates = false) {
+    if (!stop || !state.trip) return;
+    const store = hotelStayDateStore();
+    store[stop.id] = { checkIn: state.hotelStay.checkIn || "", checkOut: state.hotelStay.checkOut || "", manualDates: Boolean(manualDates || store[stop.id]?.manualDates) };
+  }
+  function loadHotelDatesForStop(stop, { allowLegacy = true } = {}) {
+    if (!stop || !state.trip) return;
+    const store = hotelStayDateStore();
+    let dates = store[stop.id];
+    const hasStoredDates = Object.keys(store).length > 0;
+    if (!dates && allowLegacy && !hasStoredDates && (state.hotelStay.checkIn || state.hotelStay.checkOut)) {
+      dates = { checkIn: state.hotelStay.checkIn || "", checkOut: state.hotelStay.checkOut || "", manualDates: true };
+    }
+    dates ||= { ...automaticHotelDates(stop), manualDates: false };
+    if (!dates.manualDates) dates = { ...automaticHotelDates(stop), manualDates: false };
+    store[stop.id] = dates;
+    state.hotelStay.checkIn = dates.checkIn || "";
+    state.hotelStay.checkOut = dates.checkOut || "";
+  }
+  function updateTripHotelDates() {
+    if (!state.trip) return;
+    const selected = selectedOvernightStop();
+    if (selected) loadHotelDatesForStop(selected);
+    const store = hotelStayDateStore();
+    reconcileHotelStayDates(state.trip, tripOvernightStops());
+    if (selected) loadHotelDatesForStop(selected, { allowLegacy: false });
   }
   function hotelStayNightCount(stop = selectedOvernightStop()) {
     const checkIn = String(state.hotelStay.checkIn || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -367,7 +409,10 @@ export function createHotels({ showView, renderAll, bindViewLinks }) {
     picker.disabled = !stops.length;
     const stop = selectedOvernightStop();
     const location = stop?.location || "";
-    if (stop) picker.value = stop.id;
+    if (stop) {
+      picker.value = stop.id;
+      loadHotelDatesForStop(stop);
+    }
     ["checkIn", "checkOut", "adults", "children", "rooms", "currency"].forEach(field => {
       const input = document.querySelector(`[data-hotel-stay-field="${field}"]`);
       if (input && String(input.value) !== String(state.hotelStay[field])) input.value = state.hotelStay[field];
@@ -408,8 +453,10 @@ export function createHotels({ showView, renderAll, bindViewLinks }) {
   }
 
   document.getElementById("overnightLocationSelect").addEventListener("change", event => {
+    const previousStop = selectedOvernightStop();
+    if (previousStop) storeCurrentHotelDates(previousStop);
     state.selectedOvernightLocation = event.target.value;
-    if (state.hotelStay.checkIn) autoPopulateHotelCheckout();
+    loadHotelDatesForStop(selectedOvernightStop(), { allowLegacy: false });
     scheduleSave();
     renderHotels();
   });
@@ -425,6 +472,7 @@ export function createHotels({ showView, renderAll, bindViewLinks }) {
       event.target.value = "";
       toast("Check-out must be after check-in");
     }
+    if (field === "checkIn" || field === "checkOut") storeCurrentHotelDates(selectedOvernightStop(), true);
     scheduleSave();
     renderHotels();
   });
@@ -440,5 +488,5 @@ export function createHotels({ showView, renderAll, bindViewLinks }) {
     if (bookingLink) trackAppEvent("hotel_booking_link_opened", { provider: bookingLink.dataset.bookingProvider, revenue_model: bookingLink.dataset.revenueModel || "none", affiliate: bookingLink.dataset.affiliateLink === "true", nights: selectedOvernightStop()?.days?.length || 1, has_dates: Boolean(state.hotelStay.checkIn && state.hotelStay.checkOut), adults: Math.min(10, Number(state.hotelStay.adults || 2)), rooms: Math.min(5, Number(state.hotelStay.rooms || 1)) });
   });
 
-  return { renderHotels };
+  return { renderHotels, updateTripHotelDates };
 }
