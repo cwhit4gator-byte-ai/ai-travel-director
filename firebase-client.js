@@ -64,6 +64,8 @@ async function initializeServices() {
     functions: functionsModule.getFunctions(app, functionsRegion),
     storage: storageModule.getStorage(app),
     GoogleAuthProvider: authModule.GoogleAuthProvider,
+    browserLocalPersistence: authModule.browserLocalPersistence,
+    setPersistence: authModule.setPersistence,
     signInWithPopup: authModule.signInWithPopup,
     signOut: authModule.signOut,
     onAuthStateChanged: authModule.onAuthStateChanged,
@@ -84,6 +86,9 @@ async function initializeServices() {
     uploadBytes: storageModule.uploadBytes,
     getDownloadURL: storageModule.getDownloadURL
   };
+
+  try { await services.setPersistence(services.auth, services.browserLocalPersistence); }
+  catch (error) { console.info("Persistent cloud sign-in is unavailable in this browser; session sign-in remains available.", error); }
 
   return { configured: true, auth: services.auth };
 }

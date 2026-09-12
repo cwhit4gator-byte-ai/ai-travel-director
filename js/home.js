@@ -1,6 +1,6 @@
-import { state } from "./state.js?v=30";
-import { escapeHTML, normalizeInterests, toast } from "./ui.js?v=30";
-import { tripDateForDay, formatTripDate } from "./trip-model.js?v=30";
+import { state } from "./state.js?v=31";
+import { escapeHTML, normalizeInterests, toast } from "./ui.js?v=31";
+import { tripDateForDay, formatTripDate } from "./trip-model.js?v=31";
 
 export function renderHome() {
   const title = document.getElementById("homeHeading");

@@ -1,4 +1,4 @@
-import { trackAppEvent } from "../firebase-client.js?v=30";
+import { trackAppEvent } from "../firebase-client.js?v=31";
 
 export function readJSON(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key) || "null") ?? fallback; }
@@ -20,7 +20,9 @@ export function safeImageURL(value) {
 
 export function setCloudBanner(text, mode = "") {
   const banner = document.getElementById("cloudBanner");
-  banner.textContent = text;
+  const label = document.getElementById("cloudBannerText");
+  if (label) label.textContent = text;
+  else banner.textContent = text;
   banner.className = `banner cloud ${mode}`.trim();
 }
 

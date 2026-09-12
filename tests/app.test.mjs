@@ -38,10 +38,13 @@ worker.register = async (url, options) => { registration = { url, options, updat
 let sharedText = "";
 Object.defineProperty(globalThis, "navigator", { configurable: true, value: { onLine: true, language: "en-US", serviceWorker: worker, clipboard: { writeText: async text => { sharedText = text; } } } });
 // Mock only the external Maps boundary, leaving feature modules and data intact.
+const geocodedAddresses = [];
+let markerCount = 0;
+let routeLineCount = 0;
 window.google = { maps: { importLibrary: async library => ({
-  maps: { Map: class { fitBounds() {} } },
-  marker: { AdvancedMarkerElement: class {} },
-  geocoding: { Geocoder: class { async geocode({ address: query }) { return { results: [{ formatted_address: query, geometry: { viewport: {}, location: {} }, address_components: [{ types: ["locality"], long_name: "Prague" }] }] }; } } },
+  maps: { Map: class { fitBounds() {} }, LatLngBounds: class { extend() {} }, Polyline: class { constructor() { routeLineCount++; } setMap() {} } },
+  marker: { AdvancedMarkerElement: class { constructor() { markerCount++; } }, PinElement: class { constructor() { this.element = {}; } } },
+  geocoding: { Geocoder: class { geocode({ address: query }, callback) { geocodedAddresses.push(query); const results = [{ formatted_address: query, geometry: { viewport: {}, location: {} }, address_components: [{ types: ["locality"], long_name: "Prague" }] }]; queueMicrotask(() => callback(results, "OK")); } } },
   places: { Place: { searchByText: async () => ({ places: ["Four Seasons Hotel Prague", "Prague Hotel Two", "Prague Hotel Three"].map((name, index) => ({ id: String(index + 1), displayName: name, formattedAddress: "Veleslavínova 2a, Prague, Czechia", rating: 4.5, userRatingCount: 100 })) }) } }
 }[library]) } };
 const startupErrors = [];
@@ -189,10 +192,31 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.equal(model.communityTripItems().length, 1);
   });
   await t.test("Explore and profile navigation still work", async () => {
+    const originalDestination = state.trip.destination;
+    const originalMapQuery = state.mapQuery;
+    state.trip.destination = "Prague → Brno → Vienna";
+    state.trip.itinerary.push(
+      { day: 3, title: "Brno", overnightLocation: "Brno", items: [] },
+      { day: 4, title: "Vienna", overnightLocation: "Vienna", items: [] }
+    );
+    state.mapQuery = state.trip.destination;
     await navigate("exploreView");
     await settle();
+    assert.match(element("routeStopList").innerHTML, /Full route/);
+    assert.match(element("routeStopList").innerHTML, /Brno/);
+    assert.deepEqual(geocodedAddresses.slice(-3), ["Prague", "Brno", "Vienna"]);
+    assert.equal(markerCount >= 3, true);
+    assert.equal(routeLineCount >= 1, true);
+    assert.match(element("mapLabelText").textContent, /3 itinerary stops mapped/);
+    await element("routeStopList").emit("click", { target: target({ "data-route-stop-index": "1" }) });
+    await settle();
+    assert.equal(element("mapSearchInput").value, "Brno");
+    assert.match(element("routeStopList").innerHTML, /route-stop-button active[^>]*data-route-stop-index="1"/);
     assert.match(element("placeList").innerHTML, /data-add-place/);
     assert.match(element("communityMapList").innerHTML, /Charles Bridge/);
+    state.trip.itinerary.splice(2, 2);
+    state.trip.destination = originalDestination;
+    state.mapQuery = originalMapQuery;
     await element("profileButton").emit("click");
     assert.equal(state.currentView, "profileView");
     element("profileName").value = "Test Traveler";
@@ -201,6 +225,7 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.equal(state.profile.name, "Test Traveler");
     assert.equal(state.profile.publicProfileVisible, false);
     assert.equal(state.currentView, "homeView");
+    assert.equal(element("cloudConnectButton").hidden, true);
   });
   await t.test("local planner recognizes the active itinerary without replacing it", async () => {
     const activeTrip = state.trip;

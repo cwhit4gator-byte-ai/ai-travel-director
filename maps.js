@@ -1,7 +1,8 @@
 import { googleMapsConfig } from "./firebase-config.js";
 
 let map = null;
-let marker = null;
+let markers = [];
+let routeLine = null;
 let geocoder = null;
 let librariesPromise = null;
 let renderSequence = 0;
@@ -67,11 +68,32 @@ async function loadLibraries() {
   return Promise.race([librariesPromise, authFailure]);
 }
 
-export async function renderGoogleMap(element, query) {
+function geocodeAddress(address) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const succeed = response => { if (!settled) { settled = true; resolve(response); } };
+    const fail = error => { if (!settled) { settled = true; reject(error); } };
+    try {
+      const possiblePromise = geocoder.geocode({ address }, (results, status) => {
+        if (status === "OK" && results?.length) succeed({ results });
+        else fail(new Error(`Google Maps could not resolve ${address}.`));
+      });
+      if (possiblePromise?.then) possiblePromise.then(succeed, fail);
+    } catch (error) {
+      fail(error);
+    }
+  });
+}
+
+export async function renderGoogleRouteMap(element, queries) {
   if (!element) throw new Error("The map container is missing.");
   const sequence = ++renderSequence;
+  const requestedLocations = [...new Set((Array.isArray(queries) ? queries : [queries]).map(query => String(query || "").trim()).filter(Boolean))].slice(0, 10);
+  if (!requestedLocations.length) throw new Error("A map location is required.");
 
-  const [{ Map }, { AdvancedMarkerElement }, geocodingLibrary] = await loadLibraries();
+  const [mapsLibrary, markerLibrary, geocodingLibrary] = await loadLibraries();
+  const { Map, LatLngBounds, Polyline } = mapsLibrary;
+  const { AdvancedMarkerElement, PinElement } = markerLibrary;
   const Geocoder = geocodingLibrary?.Geocoder || window.google.maps.Geocoder;
 
   map ||= new Map(element, {
@@ -84,23 +106,41 @@ export async function renderGoogleMap(element, query) {
   });
   geocoder ||= new Geocoder();
 
-  const response = await Promise.race([
-    geocoder.geocode({ address: query }),
+  const responses = await Promise.allSettled(requestedLocations.map(query => Promise.race([
+    geocodeAddress(query),
     watchForAuthenticationFailure()
-  ]);
-  const result = response.results?.[0];
-  if (!result) throw new Error("No map result was found.");
-  if (sequence !== renderSequence) return result.formatted_address || query;
+  ]).then(response => ({ query, result: response.results?.[0] }))));
+  const resolved = responses.filter(response => response.status === "fulfilled" && response.value.result).map(response => response.value);
+  if (!resolved.length) throw new Error("No map result was found.");
+  if (sequence !== renderSequence) return resolved.length === 1 ? (resolved[0].result.formatted_address || resolved[0].query) : `${resolved.length} itinerary stops mapped`;
 
-  map.fitBounds(result.geometry.viewport);
-  if (marker) marker.map = null;
-  marker = new AdvancedMarkerElement({
-    map,
-    position: result.geometry.location,
-    title: result.formatted_address || query
+  markers.forEach(existing => { existing.map = null; });
+  if (routeLine) routeLine.setMap(null);
+  routeLine = null;
+  markers = resolved.map(({ query, result }, index) => {
+    const pin = PinElement ? new PinElement({ glyph: String(index + 1), glyphColor: "#ffffff", background: "#246bfd", borderColor: "#0b1830" }) : null;
+    return new AdvancedMarkerElement({
+      map,
+      position: result.geometry.location,
+      title: `${index + 1}. ${result.formatted_address || query}`,
+      ...(pin?.element ? { content: pin.element } : {})
+    });
   });
 
-  return result.formatted_address || query;
+  if (resolved.length === 1 || !LatLngBounds) {
+    map.fitBounds(resolved[0].result.geometry.viewport);
+  } else {
+    const bounds = new LatLngBounds();
+    resolved.forEach(({ result }) => bounds.extend(result.geometry.location));
+    if (Polyline) routeLine = new Polyline({ map, path: resolved.map(({ result }) => result.geometry.location), geodesic: true, strokeColor: "#246bfd", strokeOpacity: .82, strokeWeight: 4 });
+    map.fitBounds(bounds, 54);
+  }
+
+  return resolved.length === 1 ? (resolved[0].result.formatted_address || resolved[0].query) : `${resolved.length} itinerary stops mapped`;
+}
+
+export async function renderGoogleMap(element, query) {
+  return renderGoogleRouteMap(element, [query]);
 }
 
 
@@ -108,7 +148,7 @@ export async function resolvePlaceCity(query) {
   const libraries = await loadLibraries();
   const Geocoder = libraries[2]?.Geocoder || window.google.maps.Geocoder;
   geocoder ||= new Geocoder();
-  const response = await Promise.race([geocoder.geocode({ address: query }), watchForAuthenticationFailure()]);
+  const response = await Promise.race([geocodeAddress(query), watchForAuthenticationFailure()]);
   const result = response.results?.[0];
   if (!result) throw new Error("No location was found for this itinerary event.");
   const preferredTypes = ["locality", "postal_town", "administrative_area_level_2", "administrative_area_level_1"];

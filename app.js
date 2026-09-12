@@ -1,17 +1,17 @@
-import { initializeCloud, observeAuth, trackAppEvent } from "./firebase-client.js?v=30";
-import { state, returningVisitor } from "./js/state.js?v=30";
-import { setCloudBanner, trackAppError } from "./js/ui.js?v=30";
-import { renderHome, renderRecommendations, initializeHome } from "./js/home.js?v=30";
-import { createPlanner } from "./js/planner.js?v=30";
-import { createHotels } from "./js/hotels.js?v=30";
-import { createItinerary } from "./js/itinerary.js?v=30";
-import { createCommunity } from "./js/community.js?v=30";
-import { createExplore } from "./js/explore.js?v=30";
-import { createProfile } from "./js/profile.js?v=30";
-import { initializeSafety } from "./js/safety.js?v=30";
-import { initializePWA } from "./js/pwa.js?v=30";
-import { createOnboarding } from "./js/onboarding.js?v=30";
-import { createToday } from "./js/today.js?v=30";
+import { initializeCloud, observeAuth, trackAppEvent } from "./firebase-client.js?v=31";
+import { state, returningVisitor } from "./js/state.js?v=31";
+import { setCloudBanner, trackAppError } from "./js/ui.js?v=31";
+import { renderHome, renderRecommendations, initializeHome } from "./js/home.js?v=31";
+import { createPlanner } from "./js/planner.js?v=31";
+import { createHotels } from "./js/hotels.js?v=31";
+import { createItinerary } from "./js/itinerary.js?v=31";
+import { createCommunity } from "./js/community.js?v=31";
+import { createExplore } from "./js/explore.js?v=31";
+import { createProfile } from "./js/profile.js?v=31";
+import { initializeSafety } from "./js/safety.js?v=31";
+import { initializePWA } from "./js/pwa.js?v=31";
+import { createOnboarding } from "./js/onboarding.js?v=31";
+import { createToday } from "./js/today.js?v=31";
 
 // Each feature owns its handlers. Only navigation and page refresh cross features.
 const planner = createPlanner({ renderAll });
@@ -71,6 +71,7 @@ async function initializeApp() {
   profile.hydrateProfileForm();
   renderAll();
   try {
+    setCloudBanner("Checking for your saved cloud account…");
     const cloud = await initializeCloud();
     state.cloudConfigured = cloud.configured;
     trackAppEvent("app_open", { returning: returningVisitor, display_mode: window.matchMedia("(display-mode: standalone)").matches ? "standalone" : "browser", online: navigator.onLine });

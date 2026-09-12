@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=30";
+import { state } from "./state.js?v=31";
 
 export function preferredTripTravelMode() {
   const styles = (state.profile.travelStyles || []).map(value => String(value).toLocaleLowerCase());

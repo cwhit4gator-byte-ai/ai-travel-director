@@ -1,7 +1,7 @@
-import { state, defaultProfile, saveLocalState } from "./state.js?v=30";
-import { normalizeInterests, toast, setCloudBanner, trackAppError } from "./ui.js?v=30";
-import { scheduleSave, syncToCloud } from "./persistence.js?v=30";
-import { loadCloudState, savePublicTravelerProfile, signInGoogle, signOutUser, trackAppEvent } from "../firebase-client.js?v=30";
+import { state, defaultProfile, saveLocalState } from "./state.js?v=31";
+import { normalizeInterests, toast, setCloudBanner, trackAppError } from "./ui.js?v=31";
+import { scheduleSave, syncToCloud } from "./persistence.js?v=31";
+import { loadCloudState, savePublicTravelerProfile, signInGoogle, signOutUser, trackAppEvent } from "../firebase-client.js?v=31";
 
 export function createProfile({ showView, renderAll, renderCommunity, renderRecommendations, hydrateCommunityActions }) {
   function hydrateProfileForm() {
@@ -20,6 +20,7 @@ export function createProfile({ showView, renderAll, renderCommunity, renderReco
     document.getElementById("accountName").textContent = state.user?.displayName || state.profile.name || "Your travel profile";
     document.getElementById("accountEmail").textContent = state.user?.email || (state.cloudConfigured ? "Not signed in" : "Saved on this device");
     document.getElementById("authButton").textContent = state.user ? "Sign out" : "Connect cloud";
+    document.getElementById("cloudConnectButton").hidden = !state.cloudConfigured || Boolean(state.user);
   }
 
   async function handleAuthenticatedUser(user) {
@@ -100,14 +101,17 @@ export function createProfile({ showView, renderAll, renderCommunity, renderReco
   });
   document.getElementById("syncButton").addEventListener("click", () => syncToCloud({ silent: false }));
 
-  document.getElementById("authButton").addEventListener("click", async () => {
+  async function changeCloudAccount({ allowSignOut = true } = {}) {
     if (!state.cloudConfigured) return toast("Firebase configuration is needed before cloud sign-in");
     try {
-      if (state.user) { await signOutUser(); trackAppEvent("sign_out", { method: "google" }); }
+      if (state.user && allowSignOut) { await signOutUser(); trackAppEvent("sign_out", { method: "google" }); }
       else { await signInGoogle(); trackAppEvent("sign_in", { method: "google" }); }
     }
     catch (error) { console.error(error); trackAppError("authentication", error); toast(error.message || "Cloud sign-in could not be completed"); }
-  });
+  }
+
+  document.getElementById("authButton").addEventListener("click", () => changeCloudAccount());
+  document.getElementById("cloudConnectButton").addEventListener("click", () => changeCloudAccount({ allowSignOut: false }));
 
   return { hydrateProfileForm, handleAuthenticatedUser };
 }
