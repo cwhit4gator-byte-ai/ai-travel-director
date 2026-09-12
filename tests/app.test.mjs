@@ -166,6 +166,7 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.match(dayHTML(1), /Next stop: Dinner &amp; a walk/);
   });
   await t.test("directions retain travel modes and handle empty days", async () => {
+    const originalTravelStyles = [...state.profile.travelStyles];
     assert.equal(directions.currentLocationTransitURL({ items: [] }), "");
     assert.equal(directions.dayRouteURL({ items: [] }), "");
     state.profile.travelStyles = ["Public transit"];
@@ -179,6 +180,7 @@ test("app modules preserve startup and feature interactions", async t => {
     await navigate("itineraryView");
     assert.doesNotMatch(dayHTML(3), /day-transit-button|All stops complete/);
     state.trip.itinerary.pop();
+    state.profile.travelStyles = originalTravelStyles;
   });
   await t.test("activities can be added, edited, moved, deleted, and shared", async () => {
     await navigate("itineraryView");
@@ -216,8 +218,9 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.match(element("tripSummary").textContent, /Jun 10–Jun 11, 2027/);
     assert.deepEqual(state.trip.hotelStayDates["Prague::1-2"], { checkIn: "2027-06-10", checkOut: "2027-06-12", manualDates: false });
     assert.match(element("todayDashboard").innerHTML, /data-today-route="transit"/);
-    assert.match(element("todayDashboard").innerHTML, /data-today-route="walking"/);
-    assert.match(element("todayDashboard").innerHTML, /data-today-route="driving"/);
+    assert.match(element("todayDashboard").innerHTML, /class="today-quick-actions"/);
+    assert.match(element("todayDashboard").innerHTML, /data-today-action="complete"/);
+    assert.match(element("todayDashboard").innerHTML, /data-today-action="change"/);
     assert.match(element("todayDashboard").innerHTML, /data-today-photo="true"/);
     assert.match(element("todayDashboard").innerHTML, /class="today-next-photo"/);
     assert.match(element("todayDashboard").innerHTML, /class="today-next-photo-credit"/);
@@ -226,6 +229,21 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.match(element("todayDashboard").innerHTML, /scheduled activities complete/);
     assert.equal(element("todayStatusBadge").attributes["data-phase"], "upcoming");
     assert.match(element("todayHeading").textContent, /Day 1 is ready/);
+  });
+  await t.test("Today quick actions open the planner and complete the next stop", async () => {
+    await navigate("homeView");
+    const next = directions.nextIncompleteTripStop(state.trip.itinerary[0]);
+    await element("todayDashboard").emit("click", { target: target({ "data-today-action": "change" }) });
+    assert.equal(state.currentView, "plannerView");
+    assert.equal(element("chatInput").value, `Change ${next.name} on Day 1`);
+    await navigate("homeView");
+    await element("todayDashboard").emit("click", { target: target({ "data-today-action": "complete" }) });
+    assert.equal(next.done, true);
+    assert.match(element("toast").textContent, /marked complete/);
+    assert.match(element("todayDashboard").innerHTML, /Prague Castle/);
+    await navigate("itineraryView");
+    await toggle(next.id);
+    await navigate("homeView");
   });
   await t.test("hotels retain grouped nights, dates, country, booking links, and currency", async () => {
     await navigate("hotelsView");

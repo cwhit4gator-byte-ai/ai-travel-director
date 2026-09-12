@@ -50,6 +50,8 @@ test("the offline shell includes the entire module graph at one version", async 
   const todaySectionRules = [...css.matchAll(/\.today-section\s*\{([^}]*)\}/g)];
   assert(todaySectionRules.length >= 2);
   for (const [, declarations] of todaySectionRules) assert.doesNotMatch(declarations, /margin\s*:\s*-/);
+  assert.match(css, /\.trip-hero\.has-active-trip\s*\{[^}]*min-height:\s*275px/);
+  assert.match(css, /\.today-quick-actions\s*\{[^}]*repeat\(3/);
   assert(cachedURLs.has(new URL("assets/travel-backdrop.webp", root).href));
   const pwa = await readFile(new URL("js/pwa.js", root), "utf8");
   assert(pwa.includes(`const APP_VERSION = "${version}"`));
