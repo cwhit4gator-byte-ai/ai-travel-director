@@ -44,7 +44,7 @@ let routeLineCount = 0;
 window.google = { maps: { importLibrary: async library => ({
   maps: { Map: class { fitBounds() {} }, LatLngBounds: class { extend() {} }, Polyline: class { constructor() { routeLineCount++; } setMap() {} } },
   marker: { AdvancedMarkerElement: class { constructor() { markerCount++; } }, PinElement: class { constructor() { this.element = {}; } } },
-  geocoding: { Geocoder: class { async geocode({ address: query }) { geocodedAddresses.push(query); return { results: [{ formatted_address: query, geometry: { viewport: {}, location: {} }, address_components: [{ types: ["locality"], long_name: "Prague" }] }] }; } } },
+  geocoding: { Geocoder: class { geocode({ address: query }, callback) { geocodedAddresses.push(query); const results = [{ formatted_address: query, geometry: { viewport: {}, location: {} }, address_components: [{ types: ["locality"], long_name: "Prague" }] }]; queueMicrotask(() => callback(results, "OK")); } } },
   places: { Place: { searchByText: async () => ({ places: ["Four Seasons Hotel Prague", "Prague Hotel Two", "Prague Hotel Three"].map((name, index) => ({ id: String(index + 1), displayName: name, formattedAddress: "Veleslavínova 2a, Prague, Czechia", rating: 4.5, userRatingCount: 100 })) }) } }
 }[library]) } };
 const startupErrors = [];

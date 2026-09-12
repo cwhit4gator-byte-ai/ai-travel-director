@@ -68,6 +68,23 @@ async function loadLibraries() {
   return Promise.race([librariesPromise, authFailure]);
 }
 
+function geocodeAddress(address) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const succeed = response => { if (!settled) { settled = true; resolve(response); } };
+    const fail = error => { if (!settled) { settled = true; reject(error); } };
+    try {
+      const possiblePromise = geocoder.geocode({ address }, (results, status) => {
+        if (status === "OK" && results?.length) succeed({ results });
+        else fail(new Error(`Google Maps could not resolve ${address}.`));
+      });
+      if (possiblePromise?.then) possiblePromise.then(succeed, fail);
+    } catch (error) {
+      fail(error);
+    }
+  });
+}
+
 export async function renderGoogleRouteMap(element, queries) {
   if (!element) throw new Error("The map container is missing.");
   const sequence = ++renderSequence;
@@ -90,7 +107,7 @@ export async function renderGoogleRouteMap(element, queries) {
   geocoder ||= new Geocoder();
 
   const responses = await Promise.allSettled(requestedLocations.map(query => Promise.race([
-    geocoder.geocode({ address: query }),
+    geocodeAddress(query),
     watchForAuthenticationFailure()
   ]).then(response => ({ query, result: response.results?.[0] }))));
   const resolved = responses.filter(response => response.status === "fulfilled" && response.value.result).map(response => response.value);
@@ -131,7 +148,7 @@ export async function resolvePlaceCity(query) {
   const libraries = await loadLibraries();
   const Geocoder = libraries[2]?.Geocoder || window.google.maps.Geocoder;
   geocoder ||= new Geocoder();
-  const response = await Promise.race([geocoder.geocode({ address: query }), watchForAuthenticationFailure()]);
+  const response = await Promise.race([geocodeAddress(query), watchForAuthenticationFailure()]);
   const result = response.results?.[0];
   if (!result) throw new Error("No location was found for this itinerary event.");
   const preferredTypes = ["locality", "postal_town", "administrative_area_level_2", "administrative_area_level_1"];
