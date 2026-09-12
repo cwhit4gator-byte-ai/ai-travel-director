@@ -51,6 +51,7 @@ export class Element {
   append(child) { this.appendChild(child); }
   replaceChildren() { this.children = []; }
   focus() {}
+  scrollTo(options) { this.scrollPosition = options; }
   scrollIntoView() {}
   reset() {}
   showModal() { this.open = true; }

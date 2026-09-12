@@ -1,8 +1,8 @@
-import { state, saveLocalState } from "./state.js?v=41";
-import { safeImageURL } from "./ui.js?v=41";
-import { tripDayNumberForDate, tripRouteStops } from "./trip-model.js?v=41";
-import { searchNearbyPlaces, searchPlaceDetails } from "../maps.js?v=41";
-import { trackAppEvent } from "../firebase-client.js?v=41";
+import { state, saveLocalState } from "./state.js?v=42";
+import { safeImageURL } from "./ui.js?v=42";
+import { tripDayNumberForDate, tripRouteStops } from "./trip-model.js?v=42";
+import { searchNearbyPlaces, searchPlaceDetails } from "../maps.js?v=42";
+import { trackAppEvent } from "../firebase-client.js?v=42";
 
 const featuredPlaceCache = new Map();
 

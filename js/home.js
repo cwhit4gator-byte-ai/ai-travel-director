@@ -1,6 +1,6 @@
-import { state } from "./state.js?v=41";
-import { escapeHTML, normalizeInterests, toast } from "./ui.js?v=41";
-import { tripDateForDay, formatTripDate } from "./trip-model.js?v=41";
+import { state } from "./state.js?v=42";
+import { escapeHTML, normalizeInterests, toast } from "./ui.js?v=42";
+import { tripDateForDay, formatTripDate } from "./trip-model.js?v=42";
 
 export function renderHome() {
   const hero = document.getElementById("tripHero");
