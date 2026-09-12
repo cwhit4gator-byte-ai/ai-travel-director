@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=36";
-import { normalizeInterests, trackAppError } from "./ui.js?v=36";
-import { scheduleSave } from "./persistence.js?v=36";
-import { requestAITrip, trackAppEvent } from "../firebase-client.js?v=36";
-import { normalizeAITrip, buildLocalTrip, tripForAIContext, preserveActiveTripDetails } from "./trip-model.js?v=36";
-import { communityItems } from "./community-data.js?v=36";
+import { state } from "./state.js?v=37";
+import { normalizeInterests, trackAppError } from "./ui.js?v=37";
+import { scheduleSave } from "./persistence.js?v=37";
+import { requestAITrip, trackAppEvent } from "../firebase-client.js?v=37";
+import { normalizeAITrip, buildLocalTrip, tripForAIContext, preserveActiveTripDetails } from "./trip-model.js?v=37";
+import { communityItems } from "./community-data.js?v=37";
 
 export function resolvePlannerTripAction(result, currentTrip) {
   if (["keep", "revise", "replace"].includes(result?.tripAction)) return result.tripAction;

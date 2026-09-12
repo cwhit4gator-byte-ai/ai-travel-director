@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b1830" />
   <meta name="description" content="AI-first travel planning, live itineraries, maps, traveler insights, and safety tools." />
   <title>AI Travel Director</title>
-  <link rel="manifest" href="manifest.json?v=36" />
+  <link rel="manifest" href="manifest.json?v=37" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=36" />
+  <link rel="stylesheet" href="styles.css?v=37" />
 </head>
 <body>
   <div class="app-shell">
@@ -28,16 +28,26 @@
 
     <main>
       <section id="homeView" class="view active" aria-labelledby="homeHeading">
-        <article class="trip-hero">
+        <article id="tripHero" class="trip-hero">
+          <img id="tripHeroImage" class="trip-hero-image" alt="" aria-hidden="true" fetchpriority="high" hidden />
           <div class="hero-copy">
             <p class="eyebrow">YOUR NEXT JOURNEY</p>
             <h1 id="homeHeading">Where should we go next?</h1>
             <p id="tripSummary">Describe the trip you want. Your AI director will shape the route around your budget, pace, history, and architecture interests.</p>
             <div class="hero-actions">
               <button id="startPlanningButton" class="primary-button">Plan with AI</button>
-              <button class="secondary-dark-button" data-view-link="exploreView">Explore map</button>
+              <button id="featuredPlaceButton" class="secondary-dark-button" data-view-link="exploreView">Explore map</button>
             </div>
           </div>
+          <aside id="tripHeroFeatured" class="hero-featured" aria-live="polite" hidden>
+            <span id="tripHeroFeaturedLabel" class="hero-featured-label">FEATURED HIGHLIGHT</span>
+            <strong id="tripHeroPlace">Popular place</strong>
+            <span id="tripHeroPlaceMeta" class="hero-featured-meta"></span>
+            <div class="hero-featured-actions">
+              <button id="rotateHeroPlace" type="button">Another highlight</button>
+              <a id="tripHeroAttribution" target="_blank" rel="noopener noreferrer" hidden></a>
+            </div>
+          </aside>
           <div class="route-orbit" aria-hidden="true">
             <span class="route-dot dot-one"></span><span class="route-dot dot-two"></span>
             <span class="plane">↗</span>
@@ -390,7 +400,7 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="affiliate-config.js?v=36"></script>
-  <script type="module" src="app.js?v=36"></script>
+  <script src="affiliate-config.js?v=37"></script>
+  <script type="module" src="app.js?v=37"></script>
 </body>
 </html>
