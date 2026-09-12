@@ -1,9 +1,9 @@
-import { state, saveLocalState } from "./state.js?v=34";
-import { escapeHTML, safeImageURL, toast } from "./ui.js?v=34";
-import { scheduleSave } from "./persistence.js?v=34";
-import { trackAppEvent } from "../firebase-client.js?v=34";
-import { focusGooglePlaceResult, renderGoogleMap, renderGooglePlaceResultsMap, renderGoogleRouteMap, searchNearbyPlaces } from "../maps.js?v=34";
-import { currentDestination, tripRouteStops } from "./trip-model.js?v=34";
+import { state, saveLocalState } from "./state.js?v=35";
+import { escapeHTML, safeImageURL, toast } from "./ui.js?v=35";
+import { scheduleSave } from "./persistence.js?v=35";
+import { trackAppEvent } from "../firebase-client.js?v=35";
+import { focusGooglePlaceResult, renderGoogleMap, renderGooglePlaceResultsMap, renderGoogleRouteMap, searchNearbyPlaces } from "../maps.js?v=35";
+import { currentDestination, tripRouteStops } from "./trip-model.js?v=35";
 
 export function createExplore({ showView, renderHome, renderCommunityMapPicks }) {
   let mapRequestId = 0;
@@ -82,12 +82,16 @@ export function createExplore({ showView, renderHome, renderCommunityMapPicks })
     document.getElementById("mapResultsHeading").textContent = `${planningOnly ? `${label} map searches` : label} near ${location}`;
     document.getElementById("mapResultCount").textContent = `${places.length} options`;
     document.getElementById("placeList").innerHTML = places.map((place, index) => {
+      const markerNumber = index + 1;
       const photoURL = safeImageURL(place.photoURL);
       const rating = place.rating ? `${place.rating.toFixed(1)} ★${place.reviewCount ? ` · ${place.reviewCount.toLocaleString()} reviews` : ""}` : "Map search suggestion";
       const address = place.address || location;
       const externalURL = planningOnly ? mapsSearchURL(place, location) : directionsURL({ ...place, location });
       return `<article class="place-card">
-        ${photoURL ? `<img class="place-card-photo" src="${escapeHTML(photoURL)}" alt="" loading="lazy" />` : `<span class="place-pin" aria-hidden="true">${index + 1}</span>`}
+        <span class="place-card-marker${photoURL ? " has-photo" : ""}" role="img" aria-label="Option ${markerNumber} matches map marker ${markerNumber}">
+          ${photoURL ? `<img class="place-card-photo" src="${escapeHTML(photoURL)}" alt="" loading="lazy" />` : ""}
+          <span class="place-card-number" aria-hidden="true">${markerNumber}</span>
+        </span>
         <div class="place-card-main">
           <strong>${escapeHTML(place.name)}</strong>
           <p>${escapeHTML(rating)}</p>

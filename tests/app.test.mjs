@@ -240,6 +240,8 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.match(element("mapResultsHeading").textContent, /History near Brno/);
     assert.match(placeSearchQueries.at(-1), /historic sites and architecture in Brno/);
     assert.match(element("placeList").innerHTML, /Brno Castle/);
+    assert.match(element("placeList").innerHTML, /aria-label="Option 1 matches map marker 1"/);
+    assert.match(element("placeList").innerHTML, /aria-label="Option 3 matches map marker 3"/);
     assert.match(element("placeList").innerHTML, />Show on map</);
     assert.match(element("placeList").innerHTML, /data-add-place/);
     assert.match(element("placeList").innerHTML, />Add to trip</);
