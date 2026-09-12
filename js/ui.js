@@ -1,4 +1,4 @@
-import { trackAppEvent } from "../firebase-client.js?v=40";
+import { trackAppEvent } from "../firebase-client.js?v=41";
 
 export function readJSON(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key) || "null") ?? fallback; }

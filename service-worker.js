@@ -1,25 +1,25 @@
-const CACHE_NAME = "ai-travel-director-v40";
-const APP_FILES = ["./?app_version=40", "./index.html", "./styles.css?v=40", "./app.js?v=40", "./firebase-client.js?v=40", "./firebase-config.js", "./affiliate-config.js?v=40", "./maps.js?v=40", "./manifest.json?v=40", "./icon.svg", "./assets/travel-backdrop.webp",
-  "./js/community-data.js?v=40",
-  "./js/community.js?v=40",
-  "./js/directions.js?v=40",
-  "./js/explore.js?v=40",
-  "./js/featured-place.js?v=40",
-  "./js/home.js?v=40",
-  "./js/hotels.js?v=40",
-  "./js/itinerary.js?v=40",
-  "./js/itinerary-photos.js?v=40",
-  "./js/onboarding.js?v=40",
-  "./js/persistence.js?v=40",
-  "./js/planner.js?v=40",
-  "./js/profile.js?v=40",
-  "./js/pwa.js?v=40",
-  "./js/safety.js?v=40",
-  "./js/smart-add.js?v=40",
-  "./js/state.js?v=40",
-  "./js/trip-model.js?v=40",
-  "./js/today.js?v=40",
-  "./js/ui.js?v=40"
+const CACHE_NAME = "ai-travel-director-v41";
+const APP_FILES = ["./?app_version=41", "./index.html", "./styles.css?v=41", "./app.js?v=41", "./firebase-client.js?v=41", "./firebase-config.js", "./affiliate-config.js?v=41", "./maps.js?v=41", "./manifest.json?v=41", "./icon.svg", "./assets/travel-backdrop.webp",
+  "./js/community-data.js?v=41",
+  "./js/community.js?v=41",
+  "./js/directions.js?v=41",
+  "./js/explore.js?v=41",
+  "./js/featured-place.js?v=41",
+  "./js/home.js?v=41",
+  "./js/hotels.js?v=41",
+  "./js/itinerary.js?v=41",
+  "./js/itinerary-photos.js?v=41",
+  "./js/onboarding.js?v=41",
+  "./js/persistence.js?v=41",
+  "./js/planner.js?v=41",
+  "./js/profile.js?v=41",
+  "./js/pwa.js?v=41",
+  "./js/safety.js?v=41",
+  "./js/smart-add.js?v=41",
+  "./js/state.js?v=41",
+  "./js/trip-model.js?v=41",
+  "./js/today.js?v=41",
+  "./js/ui.js?v=41"
 ];
 
 self.addEventListener("install", event => {
@@ -43,6 +43,6 @@ self.addEventListener("fetch", event => {
         }
         return response;
       })
-      .catch(() => caches.match(event.request).then(cached => cached || (event.request.mode === "navigate" ? caches.match("./?app_version=40") : undefined)))
+      .catch(() => caches.match(event.request).then(cached => cached || (event.request.mode === "navigate" ? caches.match("./?app_version=41") : undefined)))
   );
 });

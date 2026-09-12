@@ -1,19 +1,19 @@
-import { initializeCloud, observeAuth, trackAppEvent } from "./firebase-client.js?v=40";
-import { state, returningVisitor } from "./js/state.js?v=40";
-import { setCloudBanner, trackAppError } from "./js/ui.js?v=40";
-import { renderHome, renderRecommendations, initializeHome } from "./js/home.js?v=40";
-import { createFeaturedPlace } from "./js/featured-place.js?v=40";
-import { createPlanner } from "./js/planner.js?v=40";
-import { createHotels } from "./js/hotels.js?v=40";
-import { createItinerary } from "./js/itinerary.js?v=40";
-import { createCommunity } from "./js/community.js?v=40";
-import { createExplore } from "./js/explore.js?v=40";
-import { createProfile } from "./js/profile.js?v=40";
-import { initializeSafety } from "./js/safety.js?v=40";
-import { initializePWA } from "./js/pwa.js?v=40";
-import { createOnboarding } from "./js/onboarding.js?v=40";
-import { createToday } from "./js/today.js?v=40";
-import { createSmartAdd } from "./js/smart-add.js?v=40";
+import { initializeCloud, observeAuth, trackAppEvent } from "./firebase-client.js?v=41";
+import { state, returningVisitor } from "./js/state.js?v=41";
+import { setCloudBanner, trackAppError } from "./js/ui.js?v=41";
+import { renderHome, renderRecommendations, initializeHome } from "./js/home.js?v=41";
+import { createFeaturedPlace } from "./js/featured-place.js?v=41";
+import { createPlanner } from "./js/planner.js?v=41";
+import { createHotels } from "./js/hotels.js?v=41";
+import { createItinerary } from "./js/itinerary.js?v=41";
+import { createCommunity } from "./js/community.js?v=41";
+import { createExplore } from "./js/explore.js?v=41";
+import { createProfile } from "./js/profile.js?v=41";
+import { initializeSafety } from "./js/safety.js?v=41";
+import { initializePWA } from "./js/pwa.js?v=41";
+import { createOnboarding } from "./js/onboarding.js?v=41";
+import { createToday } from "./js/today.js?v=41";
+import { createSmartAdd } from "./js/smart-add.js?v=41";
 
 // Each feature owns its handlers. Only navigation and page refresh cross features.
 const planner = createPlanner({ renderAll });

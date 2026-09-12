@@ -107,6 +107,8 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.match(element("homeHeading").textContent, /Czechia/);
     assert.equal(element("startPlanningButton").textContent, "Ask AI about this trip");
     assert.equal(element("tripHeroFeatured").hidden, false);
+    assert.equal(element("tripHero").classList.contains("has-active-trip"), true);
+    assert.equal(element("tripHeroEyebrow").textContent, "TRIP COMMAND CENTER");
     assert.equal(element("tripHeroPlace").textContent, "Prague Old Town Hall");
     assert.match(element("tripHeroImage").src, /1400x900/);
     assert.equal(element("tripHeroAttribution").textContent, "Photo: Test Photographer");
@@ -114,6 +116,8 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.match(itineraryHTML(), /data-itinerary-photo="true"/);
     assert.match(itineraryHTML(), /class="timeline-photo"/);
     assert.match(element("communityList").innerHTML, /Charles Bridge/);
+    assert.ok(document.querySelector(".home-community-panel"));
+    assert.equal(document.querySelectorAll(".metric-card").length, 4);
     assert.equal(element("itineraryContent").handlers.get("click").length, 1);
     assert.equal(element("hotelList").handlers.get("click").length, 1);
     assert.equal(startupErrors.length, 1);
@@ -214,6 +218,10 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.match(element("todayDashboard").innerHTML, /data-today-photo="true"/);
     assert.match(element("todayDashboard").innerHTML, /class="today-next-photo"/);
     assert.match(element("todayDashboard").innerHTML, /class="today-next-photo-credit"/);
+    assert.match(element("todayDashboard").innerHTML, /class="today-progress"/);
+    assert.match(element("todayDashboard").innerHTML, /class="today-mini-timeline"/);
+    assert.match(element("todayDashboard").innerHTML, /scheduled activities complete/);
+    assert.equal(element("todayStatusBadge").attributes["data-phase"], "upcoming");
     assert.match(element("todayHeading").textContent, /Day 1 is ready/);
   });
   await t.test("hotels retain grouped nights, dates, country, booking links, and currency", async () => {

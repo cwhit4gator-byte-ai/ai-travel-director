@@ -1,26 +1,35 @@
-import { state } from "./state.js?v=40";
-import { escapeHTML, normalizeInterests, toast } from "./ui.js?v=40";
-import { tripDateForDay, formatTripDate } from "./trip-model.js?v=40";
+import { state } from "./state.js?v=41";
+import { escapeHTML, normalizeInterests, toast } from "./ui.js?v=41";
+import { tripDateForDay, formatTripDate } from "./trip-model.js?v=41";
 
 export function renderHome() {
+  const hero = document.getElementById("tripHero");
+  const heroEyebrow = document.getElementById("tripHeroEyebrow");
   const title = document.getElementById("homeHeading");
   const summary = document.getElementById("tripSummary");
   const metric = document.getElementById("homeTripMetric");
+  const toolsHeading = document.getElementById("homeToolsHeading");
   const collectionsMetric = document.getElementById("homeCollectionsMetric");
   const savedCount = state.collections.reduce((total, collection) => total + (collection.items || []).length, 0);
   if (collectionsMetric) collectionsMetric.textContent = savedCount ? `${savedCount} saved place${savedCount === 1 ? "" : "s"}` : "Nothing saved yet";
   if (state.trip) {
+    hero?.classList.add("has-active-trip");
+    if (heroEyebrow) heroEyebrow.textContent = "TRIP COMMAND CENTER";
     const firstDate = tripDateForDay(1);
     const lastDate = tripDateForDay(state.trip.days);
     const dateSummary = firstDate ? `${formatTripDate(firstDate, { month: "short", day: "numeric" })}–${formatTripDate(lastDate, { month: "short", day: "numeric", year: "numeric" })} · ` : "";
     title.textContent = state.trip.destination;
     summary.textContent = `${dateSummary}${state.trip.days}-day working itinerary · $${Number(state.trip.budget || 0).toLocaleString("en-US")} budget · no bookings made`;
     metric.textContent = `${state.trip.days} days in ${state.trip.destination}`;
+    if (toolsHeading) toolsHeading.textContent = "More for your trip";
     document.getElementById("startPlanningButton").textContent = "Ask AI about this trip";
   } else {
+    hero?.classList.remove("has-active-trip");
+    if (heroEyebrow) heroEyebrow.textContent = "START A NEW JOURNEY";
     title.textContent = "Where should we go next?";
     summary.textContent = "Describe the trip you want. Your AI director will shape the route around your budget, pace, history, and architecture interests.";
     metric.textContent = "No active trip";
+    if (toolsHeading) toolsHeading.textContent = "Start exploring";
     document.getElementById("startPlanningButton").textContent = "Plan with AI";
   }
 }
