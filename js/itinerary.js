@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=29";
-import { escapeHTML, toast, trackAppError } from "./ui.js?v=29";
-import { scheduleSave } from "./persistence.js?v=29";
-import { trackAppEvent } from "../firebase-client.js?v=29";
-import { tripTotals, findTripItem, refreshTripOvernightLocations, communityTripItems, tripDateForDay, formatTripDate, normalizeISODate } from "./trip-model.js?v=29";
-import { dayRouteURL, currentLocationTransitURL, nextIncompleteTripStop, itemDirectionsURL } from "./directions.js?v=29";
+import { state } from "./state.js?v=30";
+import { escapeHTML, toast, trackAppError } from "./ui.js?v=30";
+import { scheduleSave } from "./persistence.js?v=30";
+import { trackAppEvent } from "../firebase-client.js?v=30";
+import { tripTotals, findTripItem, refreshTripOvernightLocations, communityTripItems, tripDateForDay, formatTripDate, normalizeISODate } from "./trip-model.js?v=30";
+import { dayRouteURL, currentLocationTransitURL, nextIncompleteTripStop, itemDirectionsURL } from "./directions.js?v=30";
 
 export function createItinerary({ showView, renderAll, bindViewLinks, replanCommunityPicks, updateTripHotelDates, renderToday }) {
   function dayShareText(day) {

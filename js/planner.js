@@ -1,9 +1,14 @@
-import { state } from "./state.js?v=29";
-import { normalizeInterests, trackAppError } from "./ui.js?v=29";
-import { scheduleSave } from "./persistence.js?v=29";
-import { requestAITrip, trackAppEvent } from "../firebase-client.js?v=29";
-import { normalizeAITrip, buildLocalTrip, tripForAIContext, preserveActiveTripDetails } from "./trip-model.js?v=29";
-import { communityItems } from "./community-data.js?v=29";
+import { state } from "./state.js?v=30";
+import { normalizeInterests, trackAppError } from "./ui.js?v=30";
+import { scheduleSave } from "./persistence.js?v=30";
+import { requestAITrip, trackAppEvent } from "../firebase-client.js?v=30";
+import { normalizeAITrip, buildLocalTrip, tripForAIContext, preserveActiveTripDetails } from "./trip-model.js?v=30";
+import { communityItems } from "./community-data.js?v=30";
+
+export function resolvePlannerTripAction(result, currentTrip) {
+  if (["keep", "revise", "replace"].includes(result?.tripAction)) return result.tripAction;
+  return currentTrip ? "keep" : "replace";
+}
 
 export function createPlanner({ renderAll }) {
   function addMessage(text, type = "ai", pending = false) {
@@ -35,8 +40,11 @@ export function createPlanner({ renderAll }) {
     if (state.user && state.cloudConfigured && navigator.onLine) {
       const currentTrip = tripForAIContext();
       const result = await requestAITrip({ request: text, profile: state.profile, communityInsights: communityItems().slice(0, 8), currentTrip });
-      const tripAction = ["keep", "revise", "replace"].includes(result?.tripAction) ? result.tripAction : (currentTrip ? "revise" : "replace");
-      if (tripAction === "keep" && state.trip) return { trip: state.trip, tripAction, message: result.message || "Your active itinerary is unchanged." };
+      const tripAction = resolvePlannerTripAction(result, currentTrip);
+      if (tripAction === "keep" && state.trip) {
+        const legacyMessage = result?.tripAction ? "Your active itinerary is unchanged." : "The context-aware AI upgrade is not active on this server yet, so I kept your current itinerary unchanged.";
+        return { trip: state.trip, tripAction, message: result.message && result?.tripAction ? result.message : legacyMessage };
+      }
       const normalized = normalizeAITrip(result, text);
       return { trip: tripAction === "revise" ? preserveActiveTripDetails(normalized, state.trip) : normalized, tripAction, message: result.message || "I updated your personalized draft itinerary. No bookings were made." };
     }
@@ -77,7 +85,9 @@ export function createPlanner({ renderAll }) {
     } catch (error) {
       console.error(error);
       trackAppError("trip_planner", error);
-      pending.textContent = `I could not reach the secure AI service. ${error.message || "Please try again."}`;
+      pending.textContent = state.trip
+        ? "I could not safely apply that request, so your active itinerary was not changed. Please try again after the context-aware AI update is live."
+        : `I could not reach the secure AI service. ${error.message || "Please try again."}`;
       pending.classList.remove("pending");
     } finally { submit.disabled = false; }
   });

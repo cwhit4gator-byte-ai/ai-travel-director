@@ -5,10 +5,11 @@ import { memoryStorage } from "./support/dom.mjs";
 globalThis.localStorage = memoryStorage();
 Object.defineProperty(globalThis, "navigator", { configurable: true, value: { language: "en-US" } });
 
-const version = "29";
+const version = "30";
 const model = await import(new URL(`../js/trip-model.js?v=${version}`, import.meta.url));
 const hotels = await import(new URL(`../js/hotels.js?v=${version}`, import.meta.url));
 const today = await import(new URL(`../js/today.js?v=${version}`, import.meta.url));
+const planner = await import(new URL(`../js/planner.js?v=${version}`, import.meta.url));
 const { state } = await import(new URL(`../js/state.js?v=${version}`, import.meta.url));
 
 test("trip calendar groups consecutive cities and keeps manual hotel dates", () => {
@@ -92,4 +93,6 @@ test("AI context excludes managed hotels and revisions preserve active trip deta
   assert.equal(revised.itinerary[0].items[1].name, "Hotel One");
   assert.equal(revised.hotelSelections["Prague::1-2"].name, "Hotel One");
   assert.equal(revised.hotelStayDates["Prague::1-2"].manualDates, true);
+  assert.equal(planner.resolvePlannerTripAction({ trip: revised }, activeTrip), "keep");
+  assert.equal(planner.resolvePlannerTripAction({ tripAction: "revise", trip: revised }, activeTrip), "revise");
 });
