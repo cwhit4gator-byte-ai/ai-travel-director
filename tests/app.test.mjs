@@ -75,6 +75,7 @@ console.error = originalError;
 const { state } = await import(moduleURL("state"));
 const directions = await import(moduleURL("directions"));
 const model = await import(moduleURL("trip-model"));
+const ui = await import(moduleURL("ui"));
 const element = id => document.getElementById(id);
 const navigate = async view => document.querySelector(`[data-view-link="${view}"]`).emit("click");
 const target = (attributes, parent) => new Element("button", attributes, parent);
@@ -92,6 +93,7 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.equal(element("hotelList").handlers.get("click").length, 1);
     assert.equal(startupErrors.length, 1);
     assert.equal(startupErrors[0][0], "Firebase configuration is incomplete:");
+    assert.equal(ui.safeImageURL(""), "");
   });
   await t.test("transit advances, skips completed stops, restores an unchecked stop, and completes each day", async () => {
     await navigate("itineraryView");

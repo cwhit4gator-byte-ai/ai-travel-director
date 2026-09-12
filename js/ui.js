@@ -11,7 +11,9 @@ export function escapeHTML(value) {
 
 export function safeImageURL(value) {
   try {
-    const url = new URL(String(value || ""), window.location.href);
+    const rawValue = String(value || "").trim();
+    if (!rawValue) return "";
+    const url = new URL(rawValue, window.location.href);
     return url.protocol === "https:" ? url.href : "";
   } catch {
     return "";
