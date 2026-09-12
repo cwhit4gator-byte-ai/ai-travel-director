@@ -59,13 +59,17 @@ export function rankFeaturedPlaces(places = []) {
     });
 }
 
-export function selectWikimediaPage(pages = []) {
+export function selectWikimediaPage(pages = [], preferredTerms = []) {
+  const terms = preferredTerms.map(term => String(term || "").toLocaleLowerCase()).filter(Boolean);
   return [...pages]
     .filter(page => page?.thumbnail?.source && page?.pageimage && !/^list of\b/i.test(String(page.title || "")))
-    .sort((first, second) => Number(first.index || 999) - Number(second.index || 999))[0] || null;
+    .sort((first, second) => {
+      const score = page => terms.reduce((total, term) => total + (String(page.title || "").toLocaleLowerCase().includes(term) ? 1 : 0), 0);
+      return score(second) - score(first) || Number(first.index || 999) - Number(second.index || 999);
+    })[0] || null;
 }
 
-export async function fetchWikimediaHighlight(location, searchTerms = `${location} landmark tourist attraction`) {
+export async function fetchWikimediaHighlight(location, searchTerms = `${location} landmark tourist attraction`, preferredTerms = []) {
   const search = new URL("https://en.wikipedia.org/w/api.php");
   Object.entries({
     action: "query", format: "json", origin: "*", generator: "search",
@@ -73,7 +77,7 @@ export async function fetchWikimediaHighlight(location, searchTerms = `${locatio
     prop: "pageimages|info", piprop: "thumbnail|name", pithumbsize: "1400", pilicense: "free", inprop: "url"
   }).forEach(([key, value]) => search.searchParams.set(key, value));
   const searchData = await fetchJSON(search.href);
-  const page = selectWikimediaPage(Object.values(searchData.query?.pages || {}));
+  const page = selectWikimediaPage(Object.values(searchData.query?.pages || {}), preferredTerms);
   if (!page) return null;
 
   let photoURL = safeImageURL(page.thumbnail.source);
@@ -108,6 +112,27 @@ export async function fetchWikimediaHighlight(location, searchTerms = `${locatio
   };
 }
 
+export function activityPhotoSearch(item, day = {}) {
+  const name = String(item?.name || "").trim();
+  const exactLocation = String(item?.location || "").trim();
+  const city = String(day?.overnightLocation || exactLocation || "").trim();
+  const intent = name.toLocaleLowerCase();
+  const genericSearches = [
+    { pattern: /food|restaurant|cuisine|market|lunch|dinner|cafe/, query: `${city} cuisine`, terms: ["cuisine", "food", "market"] },
+    { pattern: /river|waterfront|riverside/, query: `${city} river`, terms: ["river", "vltava", "danube", "waterfront"] },
+    { pattern: /old town|architecture walk/, query: `${city} old town`, terms: ["old town", "historic centre", "historic center"] },
+    { pattern: /museum|history/, query: `${city} history museum`, terms: ["museum", "history"] },
+    { pattern: /square|civic district/, query: `${city} main square`, terms: ["square", "plaza"] },
+    { pattern: /indoor|backup/, query: `${city} museum`, terms: ["museum", "gallery"] },
+    { pattern: /landmark interior/, query: `${city} castle cathedral`, terms: ["castle", "cathedral"] },
+    { pattern: /train|station|transit/, query: `${city} main railway station`, terms: ["station", "railway"] }
+  ];
+  const generic = genericSearches.find(option => option.pattern.test(intent));
+  if (generic && city) return { query: generic.query, terms: generic.terms };
+  const preferredTerms = name.toLocaleLowerCase().split(/[^\p{L}\p{N}]+/u).filter(term => term.length > 3);
+  return { query: [name, exactLocation || city].filter(Boolean).join(", "), terms: preferredTerms };
+}
+
 export async function loadActivityPhoto(item, day = {}) {
   const existingPhoto = safeImageURL(item?.photoURL);
   if (existingPhoto) {
@@ -120,19 +145,19 @@ export async function loadActivityPhoto(item, day = {}) {
       mapsURL: safeImageURL(item.mapsURL)
     };
   }
-  const location = String(item?.location || day?.overnightLocation || "").trim();
-  const query = [String(item?.name || "").trim(), location].filter(Boolean).join(", ");
-  if (!query) return null;
+  const location = String(day?.overnightLocation || item?.location || "").trim();
+  const search = activityPhotoSearch(item, day);
+  if (!search.query) return null;
   try {
-    const exactMatches = rankFeaturedPlaces(await searchPlaceDetails(query, 3));
+    const exactMatches = rankFeaturedPlaces(await searchPlaceDetails(search.query, 3));
     if (exactMatches.length) return exactMatches[0];
   } catch (error) {
     console.info("Live place photography is unavailable for an itinerary card; using a public destination photo.", error);
   }
   try {
-    const exactFallback = await fetchWikimediaHighlight(location || item.name, query);
+    const exactFallback = await fetchWikimediaHighlight(location || item.name, search.query, search.terms);
     if (exactFallback) return exactFallback;
-    return location && location !== query ? fetchWikimediaHighlight(location) : null;
+    return location && location !== search.query ? fetchWikimediaHighlight(location) : null;
   } catch (error) {
     console.info("No suitable itinerary photo is available for this activity.", error);
     return null;

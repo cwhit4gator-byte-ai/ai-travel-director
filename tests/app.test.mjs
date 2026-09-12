@@ -425,4 +425,12 @@ test("itinerary photo lookup uses the activity and its overnight location", () =
     itineraryPhotoModel.itineraryPhotoKey({ name: "Evening walk" }, { overnightLocation: "Vienna" }),
     "evening walk | vienna"
   );
+  assert.deepEqual(
+    featuredPlaceModel.activityPhotoSearch({ name: "Central market lunch", category: "Local culture" }, { overnightLocation: "Prague" }),
+    { query: "Prague cuisine", terms: ["cuisine", "food", "market"] }
+  );
+  assert.equal(
+    featuredPlaceModel.activityPhotoSearch({ name: "Prague Castle", location: "Hradčany, Prague" }, { overnightLocation: "Prague" }).query,
+    "Prague Castle, Hradčany, Prague"
+  );
 });
