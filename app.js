@@ -2,6 +2,7 @@ import { initializeCloud, observeAuth, trackAppEvent } from "./firebase-client.j
 import { state, returningVisitor } from "./js/state.js?v=37";
 import { setCloudBanner, trackAppError } from "./js/ui.js?v=37";
 import { renderHome, renderRecommendations, initializeHome } from "./js/home.js?v=37";
+import { createFeaturedPlace } from "./js/featured-place.js?v=37";
 import { createPlanner } from "./js/planner.js?v=37";
 import { createHotels } from "./js/hotels.js?v=37";
 import { createItinerary } from "./js/itinerary.js?v=37";
@@ -24,8 +25,10 @@ const smartAdd = createSmartAdd({ showView, renderAll });
 const explore = createExplore({ renderCommunityMapPicks: community.renderCommunityMapPicks, openSmartAddDialog: smartAdd.openSmartAddDialog });
 const profile = createProfile({ showView, renderAll, renderCommunity: community.renderCommunity, renderRecommendations, hydrateCommunityActions: community.hydrateCommunityActions });
 const onboarding = createOnboarding();
+const featuredPlace = createFeaturedPlace();
 
 initializeHome();
+featuredPlace.initialize();
 initializeSafety({ showView });
 initializePWA();
 
@@ -56,6 +59,7 @@ function bindViewLinks(root = document) {
 
 function renderAll() {
   renderHome();
+  void featuredPlace.render();
   renderRecommendations();
   today.renderToday();
   community.renderCommunity();

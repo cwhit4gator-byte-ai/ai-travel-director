@@ -4,6 +4,7 @@ const APP_FILES = ["./?app_version=37", "./index.html", "./styles.css?v=37", "./
   "./js/community.js?v=37",
   "./js/directions.js?v=37",
   "./js/explore.js?v=37",
+  "./js/featured-place.js?v=37",
   "./js/home.js?v=37",
   "./js/hotels.js?v=37",
   "./js/itinerary.js?v=37",

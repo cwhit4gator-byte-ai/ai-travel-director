@@ -84,7 +84,7 @@ console.error = originalError;
 const { state } = await import(moduleURL("state"));
 const directions = await import(moduleURL("directions"));
 const model = await import(moduleURL("trip-model"));
-const homeModel = await import(moduleURL("home"));
+const featuredPlaceModel = await import(moduleURL("featured-place"));
 const smartAddModel = await import(moduleURL("smart-add"));
 const ui = await import(moduleURL("ui"));
 const element = id => document.getElementById(id);
@@ -397,12 +397,18 @@ test("featured destination banner follows the active trip day and ranks popular 
       { day: 3, overnightLocation: "Vienna", items: [] }
     ]
   };
-  assert.equal(homeModel.featuredTripLocation(route, new Date(2027, 6, 2, 12)), "Brno");
-  assert.equal(homeModel.featuredTripLocation(route, new Date(2027, 5, 20, 12)), "Prague");
-  const ranked = homeModel.rankFeaturedPlaces([
+  assert.equal(featuredPlaceModel.featuredTripLocation(route, new Date(2027, 6, 2, 12)), "Brno");
+  assert.equal(featuredPlaceModel.featuredTripLocation(route, new Date(2027, 5, 20, 12)), "Prague");
+  const ranked = featuredPlaceModel.rankFeaturedPlaces([
     { name: "No photo", rating: 5, reviewCount: 100000 },
     { name: "Local favorite", rating: 4.9, reviewCount: 800, heroPhotoURL: "https://example.test/local.jpg" },
     { name: "Popular landmark", rating: 4.7, reviewCount: 18000, heroPhotoURL: "https://example.test/popular.jpg" }
   ]);
   assert.deepEqual(ranked.map(place => place.name), ["Popular landmark", "Local favorite"]);
+  const fallback = featuredPlaceModel.selectWikimediaPage([
+    { index: 1, title: "List of landmarks", pageimage: "List.jpg", thumbnail: { source: "https://example.test/list.jpg" } },
+    { index: 3, title: "Later landmark", pageimage: "Later.jpg", thumbnail: { source: "https://example.test/later.jpg" } },
+    { index: 2, title: "City landmark", pageimage: "City.jpg", thumbnail: { source: "https://example.test/city.jpg" } }
+  ]);
+  assert.equal(fallback.title, "City landmark");
 });
