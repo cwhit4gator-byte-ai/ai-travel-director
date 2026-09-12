@@ -8,6 +8,7 @@ const APP_FILES = ["./?app_version=37", "./index.html", "./styles.css?v=37", "./
   "./js/home.js?v=37",
   "./js/hotels.js?v=37",
   "./js/itinerary.js?v=37",
+  "./js/itinerary-photos.js?v=37",
   "./js/onboarding.js?v=37",
   "./js/persistence.js?v=37",
   "./js/planner.js?v=37",

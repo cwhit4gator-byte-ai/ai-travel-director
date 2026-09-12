@@ -1,5 +1,5 @@
 import { state } from "./state.js?v=37";
-import { escapeHTML, toast } from "./ui.js?v=37";
+import { escapeHTML, safeImageURL, toast } from "./ui.js?v=37";
 import { scheduleSave } from "./persistence.js?v=37";
 import { trackAppEvent } from "../firebase-client.js?v=37";
 import { formatTripDate, tripDateForDay } from "./trip-model.js?v=37";
@@ -223,6 +223,9 @@ export function createSmartAdd({ showView, renderAll }) {
       name: String(pending.place.name || "Selected place").slice(0, 160),
       location: String(pending.place.address || pending.contextLocation || pending.place.name || "").slice(0, 240),
       category: String(pending.place.category || pending.category || "Explore").slice(0, 80),
+      photoURL: safeImageURL(pending.place.photoURL),
+      photoAttribution: pending.place.photoAttribution || null,
+      mapsURL: safeImageURL(pending.place.mapsURL),
       cost: Math.max(0, Number(document.getElementById("smartAddCost").value) || 0),
       note: String(document.getElementById("smartAddNote").value || "").trim().slice(0, 600),
       source: "explore",

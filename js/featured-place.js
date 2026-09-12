@@ -1,7 +1,7 @@
 import { state, saveLocalState } from "./state.js?v=37";
 import { safeImageURL } from "./ui.js?v=37";
 import { tripDayNumberForDate, tripRouteStops } from "./trip-model.js?v=37";
-import { searchNearbyPlaces } from "../maps.js?v=37";
+import { searchNearbyPlaces, searchPlaceDetails } from "../maps.js?v=37";
 import { trackAppEvent } from "../firebase-client.js?v=37";
 
 const featuredPlaceCache = new Map();
@@ -65,11 +65,11 @@ export function selectWikimediaPage(pages = []) {
     .sort((first, second) => Number(first.index || 999) - Number(second.index || 999))[0] || null;
 }
 
-async function fetchWikimediaHighlight(location) {
+export async function fetchWikimediaHighlight(location, searchTerms = `${location} landmark tourist attraction`) {
   const search = new URL("https://en.wikipedia.org/w/api.php");
   Object.entries({
     action: "query", format: "json", origin: "*", generator: "search",
-    gsrsearch: `${location} landmark tourist attraction`, gsrnamespace: "0", gsrlimit: "6",
+    gsrsearch: searchTerms, gsrnamespace: "0", gsrlimit: "6",
     prop: "pageimages|info", piprop: "thumbnail|name", pithumbsize: "1400", pilicense: "free", inprop: "url"
   }).forEach(([key, value]) => search.searchParams.set(key, value));
   const searchData = await fetchJSON(search.href);
@@ -106,6 +106,37 @@ async function fetchWikimediaHighlight(location) {
     photoAttribution: { displayName: attributionName, uri: attributionURL },
     source: "wikimedia"
   };
+}
+
+export async function loadActivityPhoto(item, day = {}) {
+  const existingPhoto = safeImageURL(item?.photoURL);
+  if (existingPhoto) {
+    return {
+      name: String(item.name || "Itinerary activity"),
+      address: String(item.location || day.overnightLocation || ""),
+      category: String(item.category || "Activity"),
+      photoURL: existingPhoto,
+      photoAttribution: item.photoAttribution || null,
+      mapsURL: safeImageURL(item.mapsURL)
+    };
+  }
+  const location = String(item?.location || day?.overnightLocation || "").trim();
+  const query = [String(item?.name || "").trim(), location].filter(Boolean).join(", ");
+  if (!query) return null;
+  try {
+    const exactMatches = rankFeaturedPlaces(await searchPlaceDetails(query, 3));
+    if (exactMatches.length) return exactMatches[0];
+  } catch (error) {
+    console.info("Live place photography is unavailable for an itinerary card; using a public destination photo.", error);
+  }
+  try {
+    const exactFallback = await fetchWikimediaHighlight(location || item.name, query);
+    if (exactFallback) return exactFallback;
+    return location && location !== query ? fetchWikimediaHighlight(location) : null;
+  } catch (error) {
+    console.info("No suitable itinerary photo is available for this activity.", error);
+    return null;
+  }
 }
 
 async function loadFeaturedPlaces(location) {

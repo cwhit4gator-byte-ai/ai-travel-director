@@ -85,6 +85,7 @@ const { state } = await import(moduleURL("state"));
 const directions = await import(moduleURL("directions"));
 const model = await import(moduleURL("trip-model"));
 const featuredPlaceModel = await import(moduleURL("featured-place"));
+const itineraryPhotoModel = await import(moduleURL("itinerary-photos"));
 const smartAddModel = await import(moduleURL("smart-add"));
 const ui = await import(moduleURL("ui"));
 const element = id => document.getElementById(id);
@@ -110,6 +111,8 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.match(element("tripHeroImage").src, /1400x900/);
     assert.equal(element("tripHeroAttribution").textContent, "Photo: Test Photographer");
     assert.equal(element("featuredPlaceButton").textContent, "View featured place");
+    assert.match(itineraryHTML(), /data-itinerary-photo="true"/);
+    assert.match(itineraryHTML(), /class="timeline-photo"/);
     assert.match(element("communityList").innerHTML, /Charles Bridge/);
     assert.equal(element("itineraryContent").handlers.get("click").length, 1);
     assert.equal(element("hotelList").handlers.get("click").length, 1);
@@ -411,4 +414,15 @@ test("featured destination banner follows the active trip day and ranks popular 
     { index: 2, title: "City landmark", pageimage: "City.jpg", thumbnail: { source: "https://example.test/city.jpg" } }
   ]);
   assert.equal(fallback.title, "City landmark");
+});
+
+test("itinerary photo lookup uses the activity and its overnight location", () => {
+  assert.equal(
+    itineraryPhotoModel.itineraryPhotoKey({ name: "Prague Castle", location: "Hradčany, Prague" }, { overnightLocation: "Prague" }),
+    "prague castle | hradčany, prague"
+  );
+  assert.equal(
+    itineraryPhotoModel.itineraryPhotoKey({ name: "Evening walk" }, { overnightLocation: "Vienna" }),
+    "evening walk | vienna"
+  );
 });
