@@ -6,12 +6,13 @@
   <meta name="theme-color" content="#0b1830" />
   <meta name="description" content="AI-first travel planning, live itineraries, maps, traveler insights, and safety tools." />
   <title>AI Travel Director</title>
-  <link rel="manifest" href="manifest.json?v=40" />
+  <link rel="manifest" href="manifest.json?v=43" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=40" />
+  <link rel="stylesheet" href="styles.css?v=43" />
 </head>
 <body>
   <div class="app-shell">
+    <div class="app-scroll">
     <header class="topbar">
       <button class="brand" data-view-link="homeView" aria-label="Go home">
         <span class="brand-mark" aria-hidden="true">✦</span>
@@ -31,7 +32,7 @@
         <article id="tripHero" class="trip-hero">
           <img id="tripHeroImage" class="trip-hero-image" alt="" aria-hidden="true" fetchpriority="high" hidden />
           <div class="hero-copy">
-            <p class="eyebrow">YOUR NEXT JOURNEY</p>
+            <p id="tripHeroEyebrow" class="eyebrow">START A NEW JOURNEY</p>
             <h1 id="homeHeading">Where should we go next?</h1>
             <p id="tripSummary">Describe the trip you want. Your AI director will shape the route around your budget, pace, history, and architecture interests.</p>
             <div class="hero-actions">
@@ -55,49 +56,56 @@
         </article>
 
         <section id="todaySection" class="today-section" aria-labelledby="todayHeading" hidden>
-          <div class="section-heading compact"><div><p id="todayEyebrow" class="eyebrow">TODAY</p><h2 id="todayHeading">Your day at a glance</h2></div></div>
+          <div class="section-heading compact today-section-heading"><div><p id="todayEyebrow" class="eyebrow">TODAY</p><h2 id="todayHeading">Your day at a glance</h2></div><span id="todayStatusBadge" class="today-status-badge">LIVE PLAN</span></div>
           <div id="todayDashboard" aria-live="polite"></div>
         </section>
 
-        <section class="quick-grid" aria-label="Trip overview">
-          <button class="metric-card" data-view-link="itineraryView">
-            <span class="metric-icon">▦</span><span><small>ITINERARY</small><strong id="homeTripMetric">No active trip</strong></span>
-          </button>
-          <button class="metric-card" data-view-link="exploreView">
-            <span class="metric-icon">⌖</span><span><small>EXPLORE</small><strong>Map your route</strong></span>
-          </button>
-          <button class="metric-card" data-view-link="collectionsView">
-            <span class="metric-icon">☆</span><span><small>COLLECTIONS</small><strong id="homeCollectionsMetric">Nothing saved yet</strong></span>
-          </button>
-          <button class="metric-card" data-view-link="hotelsView">
-            <span class="metric-icon">▤</span><span><small>HOTELS</small><strong id="homeHotelsMetric">Find the right stay</strong></span>
-          </button>
+        <section class="section-block home-tools" aria-labelledby="homeToolsHeading">
+          <div class="section-heading compact"><div><p class="eyebrow">QUICK ACCESS</p><h2 id="homeToolsHeading">More for your trip</h2></div></div>
+          <div class="quick-grid" aria-label="Trip tools">
+            <button class="metric-card" type="button" data-view-link="itineraryView">
+              <span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V5h6v2M3 12h18M9 12v2M15 12v2"/></svg></span><span class="metric-copy"><small>ITINERARY</small><strong id="homeTripMetric">No active trip</strong></span><span class="metric-arrow" aria-hidden="true">›</span>
+            </button>
+            <button class="metric-card" type="button" data-view-link="exploreView">
+              <span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9"/><path d="m15.4 8.6-2.2 4.6-4.6 2.2 2.2-4.6 4.6-2.2Z"/></svg></span><span class="metric-copy"><small>EXPLORE</small><strong>Map your route</strong></span><span class="metric-arrow" aria-hidden="true">›</span>
+            </button>
+            <button class="metric-card" type="button" data-view-link="collectionsView">
+              <span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M6 4.5A1.5 1.5 0 0 1 7.5 3h9A1.5 1.5 0 0 1 18 4.5V21l-6-3-6 3V4.5Z"/></svg></span><span class="metric-copy"><small>SAVED</small><strong id="homeCollectionsMetric">Nothing saved yet</strong></span><span class="metric-arrow" aria-hidden="true">›</span>
+            </button>
+            <button class="metric-card" type="button" data-view-link="hotelsView">
+              <span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 21V4h12v17M16 10h4v11M8 8h2M8 12h2M8 16h2M3 21h18"/></svg></span><span class="metric-copy"><small>STAYS</small><strong id="homeHotelsMetric">Find the right stay</strong></span><span class="metric-arrow" aria-hidden="true">›</span>
+            </button>
+          </div>
         </section>
 
-        <section class="section-block">
+        <section class="section-block home-recommendations">
           <div class="section-heading">
-            <div><p class="eyebrow">PERSONALIZED</p><h2>Recommended for you</h2></div>
+            <div><p class="eyebrow">PERSONALIZED</p><h2>Made for your trip</h2></div>
             <button id="refreshRecommendations" class="text-button">Refresh</button>
           </div>
           <div id="recommendationList" class="recommendation-grid"></div>
         </section>
 
-        <section class="section-block">
-          <div class="section-heading">
-            <div><p class="eyebrow">FROM TRAVELERS</p><h2>Community insights</h2></div>
-            <button id="shareExperienceButton" class="text-button">Share yours</button>
+        <details class="section-block home-community-panel">
+          <summary>
+            <span class="home-panel-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 5h13a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9l-5 4v-4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/><path d="M7 9h7M7 12h5"/></svg></span>
+            <span class="home-panel-copy"><small>FROM TRAVELERS</small><strong>Community insights</strong><em>Search shared tips and travel photos</em></span>
+            <span class="home-panel-action"><span class="when-closed">View</span><span class="when-open">Hide</span><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m6 8 4 4 4-4"/></svg></span>
+          </summary>
+          <div class="home-community-content">
+            <div class="home-community-topline"><p>Practical advice from people who have been there.</p><button id="shareExperienceButton" class="text-button">Share yours</button></div>
+            <div class="community-toolbar">
+              <label class="community-search"><span aria-hidden="true">⌕</span><input id="communitySearch" type="search" placeholder="Filter by destination or tip" aria-label="Filter community insights" /></label>
+              <label class="sr-only" for="communityAudienceFilter">Filter by traveler type</label>
+              <select id="communityAudienceFilter">
+                <option>All travelers</option><option>Everyone</option><option>Solo travelers</option><option>Families</option><option>Budget travelers</option><option>Travelers with mobility needs</option><option>History lovers</option>
+              </select>
+            </div>
+            <p id="communityResultSummary" class="result-summary" aria-live="polite"></p>
+            <div id="communityList" class="card-list"></div>
+            <button id="communityLoadMore" class="secondary-button load-more-button" type="button" hidden>Load more insights</button>
           </div>
-          <div class="community-toolbar">
-            <label class="community-search"><span aria-hidden="true">⌕</span><input id="communitySearch" type="search" placeholder="Filter by destination or tip" aria-label="Filter community insights" /></label>
-            <label class="sr-only" for="communityAudienceFilter">Filter by traveler type</label>
-            <select id="communityAudienceFilter">
-              <option>All travelers</option><option>Everyone</option><option>Solo travelers</option><option>Families</option><option>Budget travelers</option><option>Travelers with mobility needs</option><option>History lovers</option>
-            </select>
-          </div>
-          <p id="communityResultSummary" class="result-summary" aria-live="polite"></p>
-          <div id="communityList" class="card-list"></div>
-          <button id="communityLoadMore" class="secondary-button load-more-button" type="button" hidden>Load more insights</button>
-        </section>
+        </details>
       </section>
 
       <section id="plannerView" class="view" aria-labelledby="plannerHeading">
@@ -272,6 +280,7 @@
         </form>
       </section>
     </main>
+    </div>
 
     <nav class="bottom-nav" aria-label="Primary navigation">
       <button class="nav-item active" type="button" data-view-link="homeView" aria-current="page">
@@ -415,7 +424,7 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="affiliate-config.js?v=40"></script>
-  <script type="module" src="app.js?v=40"></script>
+  <script src="affiliate-config.js?v=43"></script>
+  <script type="module" src="app.js?v=43"></script>
 </body>
 </html>

@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=40";
-import { escapeHTML, safeImageURL } from "./ui.js?v=40";
-import { trackAppEvent } from "../firebase-client.js?v=40";
-import { tripDateForDay, formatTripDate, tripDayNumberForDate, tripOvernightStops } from "./trip-model.js?v=40";
-import { nextIncompleteTripStop, currentLocationDirectionsURL } from "./directions.js?v=40";
-import { loadCachedActivityPhoto } from "./itinerary-photos.js?v=40";
+import { state } from "./state.js?v=43";
+import { escapeHTML, safeImageURL } from "./ui.js?v=43";
+import { trackAppEvent } from "../firebase-client.js?v=43";
+import { tripDateForDay, formatTripDate, tripDayNumberForDate, tripOvernightStops } from "./trip-model.js?v=43";
+import { nextIncompleteTripStop, currentLocationDirectionsURL } from "./directions.js?v=43";
+import { loadCachedActivityPhoto } from "./itinerary-photos.js?v=43";
 
 export function localISODate(now = new Date()) {
   const year = now.getFullYear();
@@ -33,6 +33,7 @@ export function tripTodayContext(trip, today = localISODate()) {
 export function createToday({ showView }) {
   const dashboard = document.getElementById("todayDashboard");
   const section = document.getElementById("todaySection");
+  const statusBadge = document.getElementById("todayStatusBadge");
   let photoSequence = 0;
 
   async function hydrateNextStopPhoto(next, day) {
@@ -78,6 +79,10 @@ export function createToday({ showView }) {
       photoSequence++;
       document.getElementById("todayEyebrow").textContent = "GET TRIP-READY";
       document.getElementById("todayHeading").textContent = "Add your travel dates";
+      if (statusBadge) {
+        statusBadge.textContent = "SETUP";
+        statusBadge.setAttribute("data-phase", "setup");
+      }
       dashboard.innerHTML = `<article class="today-setup-card"><span class="today-icon" aria-hidden="true">□</span><div><strong>Turn the itinerary into a dated plan</strong><p>Set the trip start date once. Every day and overnight hotel stop will line up automatically.</p></div><button class="primary-button" type="button" data-today-action="trip">Set trip date</button></article>`;
       return;
     }
@@ -85,7 +90,10 @@ export function createToday({ showView }) {
     const next = context.next;
     const dayDate = tripDateForDay(day?.day);
     const dateLabel = formatTripDate(dayDate, { weekday: "long", month: "long", day: "numeric" });
-    const remaining = (day?.items || []).filter(item => !item.done && item.category !== "Hotel").length;
+    const activities = (day?.items || []).filter(item => item.category !== "Hotel");
+    const completed = activities.filter(item => item.done).length;
+    const remaining = activities.length - completed;
+    const progressPercent = activities.length ? Math.round((completed / activities.length) * 100) : 100;
     const stop = tripOvernightStops().find(item => item.days.includes(Number(day?.day)));
     const hotel = stop ? state.trip.hotelSelections?.[stop.id] : null;
     const phaseCopy = {
@@ -97,13 +105,23 @@ export function createToday({ showView }) {
     }[context.phase];
     document.getElementById("todayEyebrow").textContent = phaseCopy[0];
     document.getElementById("todayHeading").textContent = phaseCopy[1];
+    if (statusBadge) {
+      statusBadge.textContent = { upcoming: "UPCOMING", today: "LIVE", ahead: "NEXT DAY", overdue: "RESUME", complete: "COMPLETE" }[context.phase] || "READY";
+      statusBadge.setAttribute("data-phase", context.phase);
+    }
+    const timeline = activities.slice(0, 5).map(item => {
+      const progressState = item.done ? "complete" : item === next ? "current" : "upcoming";
+      const stateLabel = progressState === "complete" ? "complete" : progressState === "current" ? "next stop" : "upcoming";
+      return `<li class="${progressState}" aria-label="${escapeHTML(`${item.time || "Flexible"} ${item.name || "Activity"}, ${stateLabel}`)}"><span aria-hidden="true">${item.done ? "✓" : ""}</span><small>${escapeHTML(item.time || "Flexible")}</small></li>`;
+    }).join("");
     const routeLinks = next ? [
       ["Transit", "transit", "primary-button"],
       ["Walk", "walking", "today-route-button"],
       ["Drive", "driving", "today-route-button"]
     ].map(([label, mode, className]) => `<a class="${className}" href="${escapeHTML(currentLocationDirectionsURL(day, next, mode))}" target="_blank" rel="noopener" data-today-route="${mode}">${label}</a>`).join("") : "";
-    dashboard.innerHTML = `<article class="today-card">
-      <div class="today-next"${next ? ' data-today-photo="true"' : ""}>${next ? '<img class="today-next-photo" alt="" loading="lazy" hidden />' : ""}<span class="today-icon" aria-hidden="true">${next ? "↗" : "✓"}</span><div><small>${next ? "NEXT STOP" : "DAY COMPLETE"}</small><h3>${escapeHTML(next?.name || "All scheduled stops are complete")}</h3><p>${next ? `${escapeHTML(next.time || "Flexible")} · ${escapeHTML(next.location || day?.overnightLocation || state.trip.destination)}` : "Your next unfinished day will appear here automatically."}</p>${next ? '<a class="today-next-photo-credit" target="_blank" rel="noopener noreferrer" hidden></a>' : ""}</div></div>
+    dashboard.innerHTML = `<article class="today-card${next ? "" : " is-complete"}">
+      <div class="today-next${next ? "" : " is-complete"}"${next ? ' data-today-photo="true"' : ""}>${next ? '<img class="today-next-photo" alt="" loading="lazy" hidden />' : ""}<span class="today-icon" aria-hidden="true">${next ? "↗" : "✓"}</span><div><small>${next ? "NEXT STOP" : "DAY COMPLETE"}</small><h3>${escapeHTML(next?.name || "All scheduled stops are complete")}</h3><p>${next ? `${escapeHTML(next.time || "Flexible")} · ${escapeHTML(next.location || day?.overnightLocation || state.trip.destination)}` : "Your next unfinished day will appear here automatically."}</p>${next ? '<a class="today-next-photo-credit" target="_blank" rel="noopener noreferrer" hidden></a>' : ""}</div></div>
+      <div class="today-progress" aria-label="${completed} of ${activities.length} scheduled activities complete"><div class="today-progress-copy"><span>Today's progress</span><strong>${activities.length ? `${completed} of ${activities.length} complete` : "No activities scheduled"}</strong></div><div class="today-progress-bar" aria-hidden="true"><span style="width:${progressPercent}%"></span></div>${timeline ? `<ol class="today-mini-timeline">${timeline}</ol>` : ""}</div>
       <div class="today-facts"><div><small>REMAINING</small><strong>${remaining} activit${remaining === 1 ? "y" : "ies"}</strong></div><div><small>TONIGHT</small><strong>${escapeHTML(hotel?.name || (stop ? `Choose a hotel in ${stop.location}` : day?.overnightLocation || "No overnight stop"))}</strong></div></div>
       ${routeLinks ? `<div class="today-route-actions" aria-label="Directions from your current location">${routeLinks}</div>` : ""}
       <div class="today-secondary-actions"><button type="button" data-today-action="trip">Open Day ${day?.day || 1}</button><button type="button" data-today-action="hotels">${hotel ? "View hotel" : "Choose hotel"}</button></div>
