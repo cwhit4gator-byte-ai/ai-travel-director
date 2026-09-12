@@ -1,9 +1,10 @@
-import { state } from "./state.js?v=43";
-import { escapeHTML, safeImageURL } from "./ui.js?v=43";
-import { trackAppEvent } from "../firebase-client.js?v=43";
-import { tripDateForDay, formatTripDate, tripDayNumberForDate, tripOvernightStops } from "./trip-model.js?v=43";
-import { nextIncompleteTripStop, currentLocationDirectionsURL } from "./directions.js?v=43";
-import { loadCachedActivityPhoto } from "./itinerary-photos.js?v=43";
+import { state } from "./state.js?v=44";
+import { escapeHTML, safeImageURL, toast } from "./ui.js?v=44";
+import { scheduleSave } from "./persistence.js?v=44";
+import { trackAppEvent } from "../firebase-client.js?v=44";
+import { tripDateForDay, formatTripDate, tripDayNumberForDate, tripOvernightStops } from "./trip-model.js?v=44";
+import { nextIncompleteTripStop, currentLocationDirectionsURL, preferredTripTravelMode } from "./directions.js?v=44";
+import { loadCachedActivityPhoto } from "./itinerary-photos.js?v=44";
 
 export function localISODate(now = new Date()) {
   const year = now.getFullYear();
@@ -114,16 +115,14 @@ export function createToday({ showView }) {
       const stateLabel = progressState === "complete" ? "complete" : progressState === "current" ? "next stop" : "upcoming";
       return `<li class="${progressState}" aria-label="${escapeHTML(`${item.time || "Flexible"} ${item.name || "Activity"}, ${stateLabel}`)}"><span aria-hidden="true">${item.done ? "✓" : ""}</span><small>${escapeHTML(item.time || "Flexible")}</small></li>`;
     }).join("");
-    const routeLinks = next ? [
-      ["Transit", "transit", "primary-button"],
-      ["Walk", "walking", "today-route-button"],
-      ["Drive", "driving", "today-route-button"]
-    ].map(([label, mode, className]) => `<a class="${className}" href="${escapeHTML(currentLocationDirectionsURL(day, next, mode))}" target="_blank" rel="noopener" data-today-route="${mode}">${label}</a>`).join("") : "";
+    const travelMode = preferredTripTravelMode();
+    const travelModeLabel = { transit: "Transit", walking: "Walking", driving: "Driving" }[travelMode] || "Directions";
+    const directionsURL = next ? currentLocationDirectionsURL(day, next, travelMode) : "";
     dashboard.innerHTML = `<article class="today-card${next ? "" : " is-complete"}">
       <div class="today-next${next ? "" : " is-complete"}"${next ? ' data-today-photo="true"' : ""}>${next ? '<img class="today-next-photo" alt="" loading="lazy" hidden />' : ""}<span class="today-icon" aria-hidden="true">${next ? "↗" : "✓"}</span><div><small>${next ? "NEXT STOP" : "DAY COMPLETE"}</small><h3>${escapeHTML(next?.name || "All scheduled stops are complete")}</h3><p>${next ? `${escapeHTML(next.time || "Flexible")} · ${escapeHTML(next.location || day?.overnightLocation || state.trip.destination)}` : "Your next unfinished day will appear here automatically."}</p>${next ? '<a class="today-next-photo-credit" target="_blank" rel="noopener noreferrer" hidden></a>' : ""}</div></div>
+      ${next ? `<div class="today-quick-actions" aria-label="Next stop actions"><a class="today-quick-action directions" href="${escapeHTML(directionsURL)}" target="_blank" rel="noopener" data-today-route="${travelMode}" aria-label="Open ${escapeHTML(travelModeLabel)} directions to ${escapeHTML(next.name)}"><span aria-hidden="true">↗</span><strong>Directions</strong><small>${travelModeLabel}</small></a><button class="today-quick-action complete" type="button" data-today-action="complete" aria-label="Mark ${escapeHTML(next.name)} complete"><span aria-hidden="true">✓</span><strong>Complete</strong><small>Mark done</small></button><button class="today-quick-action change" type="button" data-today-action="change" aria-label="Ask AI to change ${escapeHTML(next.name)}"><span aria-hidden="true">✦</span><strong>Change</strong><small>Ask AI</small></button></div>` : ""}
       <div class="today-progress" aria-label="${completed} of ${activities.length} scheduled activities complete"><div class="today-progress-copy"><span>Today's progress</span><strong>${activities.length ? `${completed} of ${activities.length} complete` : "No activities scheduled"}</strong></div><div class="today-progress-bar" aria-hidden="true"><span style="width:${progressPercent}%"></span></div>${timeline ? `<ol class="today-mini-timeline">${timeline}</ol>` : ""}</div>
       <div class="today-facts"><div><small>REMAINING</small><strong>${remaining} activit${remaining === 1 ? "y" : "ies"}</strong></div><div><small>TONIGHT</small><strong>${escapeHTML(hotel?.name || (stop ? `Choose a hotel in ${stop.location}` : day?.overnightLocation || "No overnight stop"))}</strong></div></div>
-      ${routeLinks ? `<div class="today-route-actions" aria-label="Directions from your current location">${routeLinks}</div>` : ""}
       <div class="today-secondary-actions"><button type="button" data-today-action="trip">Open Day ${day?.day || 1}</button><button type="button" data-today-action="hotels">${hotel ? "View hotel" : "Choose hotel"}</button></div>
     </article>`;
     void hydrateNextStopPhoto(next, day);
@@ -134,6 +133,28 @@ export function createToday({ showView }) {
     if (route) trackAppEvent("today_route_opened", { method: route.dataset.todayRoute });
     const action = event.target.closest("[data-today-action]");
     if (!action) return;
+    if (action.dataset.todayAction === "complete") {
+      const context = tripTodayContext(state.trip);
+      if (!context.next) return;
+      const completedStop = context.next;
+      completedStop.done = true;
+      scheduleSave();
+      trackAppEvent("today_stop_completed", { day: Number(context.day?.day || 1), stop_name: completedStop.name || "Activity" });
+      renderToday();
+      toast(`${completedStop.name || "Activity"} marked complete`);
+      return;
+    }
+    if (action.dataset.todayAction === "change") {
+      const context = tripTodayContext(state.trip);
+      showView("plannerView");
+      const input = document.getElementById("chatInput");
+      if (input && context.next) {
+        input.value = `Change ${context.next.name || "my next stop"} on Day ${context.day?.day || 1}`;
+        input.focus();
+      }
+      trackAppEvent("today_change_requested", { day: Number(context.day?.day || 1) });
+      return;
+    }
     showView(action.dataset.todayAction === "hotels" ? "hotelsView" : "itineraryView");
     if (action.dataset.todayAction === "trip") {
       const context = tripTodayContext(state.trip);
