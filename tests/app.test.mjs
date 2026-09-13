@@ -30,13 +30,13 @@ globalThis.setTimeout = () => 1;
 globalThis.clearTimeout = () => {};
 const window = new Element();
 let reloads = 0;
-Object.assign(window, { location: { href: "https://test.local/", reload: () => reloads++ }, scrollTo() {}, matchMedia: () => ({ matches: false }), confirm: () => true });
+Object.assign(window, { location: { href: "https://test.local/", reload: () => reloads++ }, scrollTo() {}, matchMedia: query => ({ matches: query === "(display-mode: standalone)" }), confirm: () => true });
 globalThis.window = window;
 const worker = new Element();
 let registration = null;
 worker.register = async (url, options) => { registration = { url, options, updates: 0 }; return { update: async () => registration.updates++ }; };
 let sharedText = "";
-Object.defineProperty(globalThis, "navigator", { configurable: true, value: { onLine: true, language: "en-US", serviceWorker: worker, clipboard: { writeText: async text => { sharedText = text; } } } });
+Object.defineProperty(globalThis, "navigator", { configurable: true, value: { onLine: true, language: "en-US", userAgent: "Mozilla/5.0 (Linux; Android 14)", serviceWorker: worker, clipboard: { writeText: async text => { sharedText = text; } } } });
 // Mock only the external Maps boundary, leaving feature modules and data intact.
 const geocodedAddresses = [];
 const placeSearchQueries = [];
@@ -123,6 +123,7 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.match(element("communityList").innerHTML, /Charles Bridge/);
     assert.ok(document.querySelector(".home-community-panel"));
     assert.equal(document.querySelectorAll(".metric-card").length, 4);
+    assert.equal(document.querySelector("html").classList.contains("android-standalone"), true);
     assert.match(element("recommendationList").innerHTML, /class="recommendation-lead"/);
     assert.match(element("recommendationList").innerHTML, /Add your travel dates/);
     assert.match(element("recommendationList").innerHTML, /1 of 3 ready/);

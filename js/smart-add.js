@@ -1,8 +1,8 @@
-import { state } from "./state.js?v=47";
-import { escapeHTML, safeImageURL, toast } from "./ui.js?v=47";
-import { scheduleSave } from "./persistence.js?v=47";
-import { trackAppEvent } from "../firebase-client.js?v=47";
-import { formatTripDate, tripDateForDay } from "./trip-model.js?v=47";
+import { state } from "./state.js?v=48";
+import { escapeHTML, safeImageURL, toast } from "./ui.js?v=48";
+import { scheduleSave } from "./persistence.js?v=48";
+import { trackAppEvent } from "../firebase-client.js?v=48";
+import { formatTripDate, tripDateForDay } from "./trip-model.js?v=48";
 
 function comparableText(value) {
   return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();

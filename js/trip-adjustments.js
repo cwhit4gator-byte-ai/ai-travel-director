@@ -1,8 +1,8 @@
-import { state } from "./state.js?v=47";
-import { escapeHTML, safeImageURL, toast } from "./ui.js?v=47";
-import { scheduleSave } from "./persistence.js?v=47";
-import { trackAppEvent } from "../firebase-client.js?v=47";
-import { searchNearbyPlaces, searchPlaceDetails } from "../maps.js?v=47";
+import { state } from "./state.js?v=48";
+import { escapeHTML, safeImageURL, toast } from "./ui.js?v=48";
+import { scheduleSave } from "./persistence.js?v=48";
+import { trackAppEvent } from "../firebase-client.js?v=48";
+import { searchNearbyPlaces, searchPlaceDetails } from "../maps.js?v=48";
 
 const REASON_LABELS = { late: "Running late", closed: "Place closed", weather: "Weather", walking: "Less walking", replace: "New stop" };
 const REASON_SEARCHES = {
