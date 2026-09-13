@@ -1,20 +1,21 @@
-import { initializeCloud, observeAuth, trackAppEvent } from "./firebase-client.js?v=48";
-import { state, returningVisitor } from "./js/state.js?v=48";
-import { setCloudBanner, trackAppError } from "./js/ui.js?v=48";
-import { renderHome, renderRecommendations, initializeHome } from "./js/home.js?v=48";
-import { createFeaturedPlace } from "./js/featured-place.js?v=48";
-import { createPlanner } from "./js/planner.js?v=48";
-import { createHotels } from "./js/hotels.js?v=48";
-import { createItinerary } from "./js/itinerary.js?v=48";
-import { createCommunity } from "./js/community.js?v=48";
-import { createExplore } from "./js/explore.js?v=48";
-import { createProfile } from "./js/profile.js?v=48";
-import { initializeSafety } from "./js/safety.js?v=48";
-import { initializePWA } from "./js/pwa.js?v=48";
-import { createOnboarding } from "./js/onboarding.js?v=48";
-import { createToday } from "./js/today.js?v=48";
-import { createSmartAdd } from "./js/smart-add.js?v=48";
-import { createTripAdjustments } from "./js/trip-adjustments.js?v=48";
+import { initializeCloud, observeAuth, trackAppEvent } from "./firebase-client.js?v=49";
+import { state, returningVisitor } from "./js/state.js?v=49";
+import { setCloudBanner, trackAppError } from "./js/ui.js?v=49";
+import { renderHome, renderRecommendations, initializeHome } from "./js/home.js?v=49";
+import { createFeaturedPlace } from "./js/featured-place.js?v=49";
+import { createPlanner } from "./js/planner.js?v=49";
+import { createHotels } from "./js/hotels.js?v=49";
+import { createItinerary } from "./js/itinerary.js?v=49";
+import { createCommunity } from "./js/community.js?v=49";
+import { createExplore } from "./js/explore.js?v=49";
+import { createProfile } from "./js/profile.js?v=49";
+import { initializeSafety } from "./js/safety.js?v=49";
+import { initializePWA } from "./js/pwa.js?v=49";
+import { createOnboarding } from "./js/onboarding.js?v=49";
+import { createToday } from "./js/today.js?v=49";
+import { createSmartAdd } from "./js/smart-add.js?v=49";
+import { createTripAdjustments } from "./js/trip-adjustments.js?v=49";
+import { createFlights } from "./js/flights.js?v=49";
 
 const appRoot = document.querySelector("html");
 const isAndroidStandalone = /Android/i.test(navigator.userAgent || "") && window.matchMedia("(display-mode: standalone)").matches;
@@ -23,6 +24,7 @@ if (isAndroidStandalone) appRoot?.classList.add("android-standalone");
 // Each feature owns its handlers. Only navigation and page refresh cross features.
 const planner = createPlanner({ renderAll });
 const hotels = createHotels({ showView, renderAll, bindViewLinks });
+const flights = createFlights({ bindViewLinks, renderAll });
 const tripAdjustments = createTripAdjustments({ showView, renderAll });
 const today = createToday({ showView, openTripAdjustment: tripAdjustments.open });
 const itinerary = createItinerary({ showView, renderAll, bindViewLinks, replanCommunityPicks: () => community.replanCommunityPicks(), updateTripHotelDates: hotels.updateTripHotelDates, renderToday: today.renderToday });
@@ -58,6 +60,7 @@ function showView(viewId) {
   if (viewId === "itineraryView") itinerary.renderItinerary();
   if (viewId === "collectionsView") community.renderCollections();
   if (viewId === "hotelsView") hotels.renderHotels();
+  if (viewId === "flightsView") flights.renderFlights();
   if (viewId === "exploreView") explore.renderMap();
   if (viewId === "homeView") today.renderToday();
 }
@@ -79,6 +82,7 @@ function renderAll() {
   itinerary.renderItinerary();
   community.renderCollections();
   hotels.renderHotels();
+  flights.renderFlights();
 }
 
 bindViewLinks();

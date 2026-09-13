@@ -1,4 +1,4 @@
-import { readJSON } from "./ui.js?v=48";
+import { readJSON } from "./ui.js?v=49";
 
 const STORAGE_KEY = "aitd_v3_state";
 export const returningVisitor = Boolean(localStorage.getItem(STORAGE_KEY));
@@ -57,9 +57,20 @@ export const state = {
   hotelLocationsAttempted: false,
   hotelStay: { checkIn: "", checkOut: "", adults: 2, children: 0, rooms: 1, currency: "USD", ...(saved.hotelStay || {}) },
   hotelPlacesLoadingKey: "",
-  hotelCurrencyLoading: ""
+  hotelCurrencyLoading: "",
+  flightSearch: {
+    tripKey: "",
+    homeAirport: "",
+    arrivalDestination: "",
+    departureDestination: "",
+    arrivalDate: "",
+    departureDate: "",
+    adults: 1,
+    cabin: "economy",
+    ...(saved.flightSearch || {})
+  }
 };
 
 export function saveLocalState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ profile: state.profile, trip: state.trip, experiences: state.experiences, collections: state.collections, mapQuery: state.mapQuery, hotelStay: state.hotelStay }));
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({ profile: state.profile, trip: state.trip, experiences: state.experiences, collections: state.collections, mapQuery: state.mapQuery, hotelStay: state.hotelStay, flightSearch: state.flightSearch }));
 }

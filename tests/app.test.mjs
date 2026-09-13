@@ -122,11 +122,11 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.match(itineraryHTML(), /class="timeline-photo"/);
     assert.match(element("communityList").innerHTML, /Charles Bridge/);
     assert.ok(document.querySelector(".home-community-panel"));
-    assert.equal(document.querySelectorAll(".metric-card").length, 4);
+    assert.equal(document.querySelectorAll(".metric-card").length, 5);
     assert.equal(document.querySelector("html").classList.contains("android-standalone"), true);
     assert.match(element("recommendationList").innerHTML, /class="recommendation-lead"/);
     assert.match(element("recommendationList").innerHTML, /Add your travel dates/);
-    assert.match(element("recommendationList").innerHTML, /1 of 3 ready/);
+    assert.match(element("recommendationList").innerHTML, /1 of 4 ready/);
     assert.equal(element("recommendationList").handlers.get("click").length, 1);
     assert.equal(element("itineraryContent").handlers.get("click").length, 1);
     assert.equal(element("hotelList").handlers.get("click").length, 1);
@@ -252,6 +252,20 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.match(element("todayDashboard").innerHTML, /scheduled activities complete/);
     assert.equal(element("todayStatusBadge").attributes["data-phase"], "upcoming");
     assert.match(element("todayHeading").textContent, /Day 1 is ready/);
+  });
+  await t.test("flight search follows trip endpoints and waits for traveler approval", async () => {
+    await navigate("flightsView");
+    assert.match(element("flightRouteTitle").textContent, /Fly into Prague · home from Prague/);
+    assert.match(element("flightSearchContent").innerHTML, /Nothing is booked automatically/);
+    assert.match(element("flightSearchContent").innerHTML, /Enter your home airport/);
+    await element("flightSearchContent").emit("change", { target: Object.assign(target({ "data-flight-field": "homeAirport" }), { value: "MCO" }) });
+    assert.equal(state.flightSearch.homeAirport, "MCO");
+    const html = element("flightSearchContent").innerHTML;
+    const google = new URL(html.match(/href="(https:\/\/www\.google\.com\/travel\/flights[^"]+)"/)[1].replaceAll("&amp;", "&"));
+    assert.match(google.searchParams.get("q"), /MCO to Prague on 2027-06-10/);
+    assert.match(google.searchParams.get("q"), /Prague to MCO on 2027-06-11/);
+    assert.match(html, /Compare on KAYAK/);
+    assert.match(element("recommendationList").innerHTML, /3 of 4 ready/);
   });
   await t.test("Trip Rescue offers live choices and previews one protected change before applying it", async () => {
     await navigate("homeView");
