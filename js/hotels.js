@@ -1,9 +1,9 @@
-import { state } from "./state.js?v=48";
-import { escapeHTML, safeImageURL, normalizeInterests, toast, trackAppError } from "./ui.js?v=48";
-import { scheduleSave } from "./persistence.js?v=48";
-import { requestAITrip, trackAppEvent } from "../firebase-client.js?v=48";
-import { resolvePlaceCity, searchNearbyHotels } from "../maps.js?v=48";
-import { currentDestination, tripOvernightStops, normalizeAITrip, addDaysToISODate, tripDateForDay } from "./trip-model.js?v=48";
+import { state } from "./state.js?v=49";
+import { escapeHTML, safeImageURL, normalizeInterests, toast, trackAppError } from "./ui.js?v=49";
+import { scheduleSave } from "./persistence.js?v=49";
+import { requestAITrip, trackAppEvent } from "../firebase-client.js?v=49";
+import { resolvePlaceCity, searchNearbyHotels } from "../maps.js?v=49";
+import { currentDestination, tripOvernightStops, normalizeAITrip, addDaysToISODate, tripDateForDay } from "./trip-model.js?v=49";
 
 export function automaticHotelDates(stop, trip = state.trip) {
   if (!stop) return { checkIn: "", checkOut: "" };

@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b1830" />
   <meta name="description" content="AI-first travel planning, live itineraries, maps, traveler insights, and safety tools." />
   <title>AI Travel Director</title>
-  <link rel="manifest" href="manifest.json?v=48" />
+  <link rel="manifest" href="manifest.json?v=49" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=48" />
+  <link rel="stylesheet" href="styles.css?v=49" />
 </head>
 <body>
   <div class="app-shell">
@@ -74,6 +74,9 @@
             </button>
             <button class="metric-card" type="button" data-view-link="hotelsView">
               <span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M4 21V4h12v17M16 10h4v11M8 8h2M8 12h2M8 16h2M3 21h18"/></svg></span><span class="metric-copy"><small>STAYS</small><strong id="homeHotelsMetric">Find the right stay</strong></span><span class="metric-arrow" aria-hidden="true">›</span>
+            </button>
+            <button class="metric-card flight-metric-card" type="button" data-view-link="flightsView">
+              <span class="metric-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m3 14 7.5-2.5V5.8a1.8 1.8 0 0 1 3.6 0v4.5l5.4-1.8c.9-.3 1.8.4 1.8 1.3 0 .5-.3 1-.8 1.2l-6.4 3v4.2l2.4 1.4v1.1l-4.2-.8-4.2.8v-1.1l2.4-1.4v-3.1L3 16v-2Z"/></svg></span><span class="metric-copy"><small>FLIGHTS</small><strong id="homeFlightsMetric">Plan arrival and flight home</strong></span><span class="metric-arrow" aria-hidden="true">›</span>
             </button>
           </div>
         </section>
@@ -203,6 +206,12 @@
         <div class="hotel-toolbar" aria-label="Hotel preference"><button class="filter-chip active" type="button" data-hotel-filter="best">Best match</button><button class="filter-chip" type="button" data-hotel-filter="value">Best value</button><button class="filter-chip" type="button" data-hotel-filter="central">Central</button><button class="filter-chip" type="button" data-hotel-filter="quiet">Quiet</button></div>
         <div id="hotelList" class="hotel-grid"></div>
         <aside class="affiliate-disclosure" aria-label="Affiliate disclosure"><strong>How booking links work</strong><p>Some hotel links are affiliate links. Travel AI may earn money from a qualified click or completed booking at no additional cost to you. Recommendations stay based on traveler fit, location, and budget—not commission. Prices are planning estimates; confirm availability, total price, taxes, fees, cancellation terms, and accessibility with the provider.</p></aside>
+      </section>
+
+      <section id="flightsView" class="view" aria-labelledby="flightsHeading">
+        <div class="section-heading page-heading"><div><p class="eyebrow">FLIGHTS FOR YOUR ROUTE</p><h1 id="flightsHeading">Fly in, travel through, fly home</h1></div><button class="round-button" data-view-link="homeView" aria-label="Close flight search">×</button></div>
+        <article class="flight-intro"><span class="flight-intro-icon" aria-hidden="true">↗</span><div><strong id="flightRouteTitle">Plan a trip to build your flight route</strong><p id="flightRouteSummary">The app will use the first and final destinations from your itinerary.</p></div></article>
+        <div id="flightSearchContent" aria-live="polite"></div>
       </section>
 
       <section id="safetyView" class="view" aria-labelledby="safetyHeading">
@@ -479,7 +488,7 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="affiliate-config.js?v=48"></script>
-  <script type="module" src="app.js?v=48"></script>
+  <script src="affiliate-config.js?v=49"></script>
+  <script type="module" src="app.js?v=49"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
-import { state, saveLocalState } from "./state.js?v=48";
-import { escapeHTML, normalizeInterests, toast } from "./ui.js?v=48";
-import { tripDateForDay, formatTripDate, tripOvernightStops } from "./trip-model.js?v=48";
-import { trackAppEvent } from "../firebase-client.js?v=48";
+import { state, saveLocalState } from "./state.js?v=49";
+import { escapeHTML, normalizeInterests, toast } from "./ui.js?v=49";
+import { tripDateForDay, formatTripDate, tripOvernightStops, tripRouteStops } from "./trip-model.js?v=49";
+import { trackAppEvent } from "../firebase-client.js?v=49";
 
 let recommendationRotation = 0;
 
@@ -12,6 +12,7 @@ export function renderHome() {
   const summary = document.getElementById("tripSummary");
   const metric = document.getElementById("homeTripMetric");
   const toolsHeading = document.getElementById("homeToolsHeading");
+  const flightsMetric = document.getElementById("homeFlightsMetric");
   const collectionsMetric = document.getElementById("homeCollectionsMetric");
   const savedCount = state.collections.reduce((total, collection) => total + (collection.items || []).length, 0);
   if (collectionsMetric) collectionsMetric.textContent = savedCount ? `${savedCount} saved place${savedCount === 1 ? "" : "s"}` : "Nothing saved yet";
@@ -24,6 +25,8 @@ export function renderHome() {
     title.textContent = state.trip.destination;
     summary.textContent = `${dateSummary}${state.trip.days}-day working itinerary · $${Number(state.trip.budget || 0).toLocaleString("en-US")} budget · no bookings made`;
     metric.textContent = `${state.trip.days} days in ${state.trip.destination}`;
+    const flightStops = tripRouteStops();
+    if (flightsMetric) flightsMetric.textContent = flightStops.length > 1 ? `${flightStops[0]} in · ${flightStops.at(-1)} home` : `Flights for ${flightStops[0] || state.trip.destination}`;
     if (toolsHeading) toolsHeading.textContent = "More for your trip";
     document.getElementById("startPlanningButton").textContent = "Ask AI about this trip";
   } else {
@@ -32,6 +35,7 @@ export function renderHome() {
     title.textContent = "Where should we go next?";
     summary.textContent = "Describe the trip you want. Your AI director will shape the route around your budget, pace, history, and architecture interests.";
     metric.textContent = "No active trip";
+    if (flightsMetric) flightsMetric.textContent = "Plan arrival and flight home";
     if (toolsHeading) toolsHeading.textContent = "Start exploring";
     document.getElementById("startPlanningButton").textContent = "Plan with AI";
   }
@@ -67,9 +71,12 @@ export function renderRecommendations() {
   const activities = itinerary.flatMap(day => (day.items || []).filter(item => item.category !== "Hotel"));
   const pendingEntry = itinerary.map(day => ({ day, item: (day.items || []).find(item => item.category !== "Hotel" && !item.done) })).find(entry => entry.item);
   const stops = tripOvernightStops();
+  const flightStops = tripRouteStops();
   const missingHotel = stops.find(stop => !state.trip.hotelSelections?.[stop.id]);
+  const flightsReady = Boolean(state.trip.startDate && state.flightSearch.homeAirport && flightStops.length);
   const readinessSteps = [
     { label: "Dates", ready: Boolean(state.trip.startDate) },
+    { label: "Flights", ready: flightsReady },
     { label: "Stays", ready: stops.length === 0 || !missingHotel },
     { label: "Route", ready: activities.length > 0 }
   ];
@@ -78,6 +85,10 @@ export function renderRecommendations() {
   let lead;
   if (!state.trip.startDate) {
     lead = { status: "TRIP SETUP", title: "Add your travel dates", text: "Set the start date once to align every itinerary day and hotel stay automatically.", action: "Set trip dates", view: "itineraryView", focus: "tripStartDate" };
+  } else if (!flightsReady) {
+    const firstStop = flightStops[0] || state.trip.destination;
+    const finalStop = flightStops.at(-1) || firstStop;
+    lead = { status: "FLIGHT SETUP", title: `Fly into ${firstStop} and home from ${finalStop}`, text: "Add your home airport to compare the complete route without backtracking to the first city.", action: "Set up flights", view: "flightsView" };
   } else if (missingHotel) {
     lead = { status: "NEEDS ATTENTION", title: `Choose your stay in ${missingHotel.location}`, text: "Compare three real properties and keep this overnight stop connected to the itinerary.", action: "Compare hotels", view: "hotelsView", hotelStop: missingHotel.id };
   } else if (!activities.length) {
@@ -88,11 +99,11 @@ export function renderRecommendations() {
     lead = { status: "TRIP READY", title: `Review Day ${pendingEntry?.day?.day || 1}`, text: `${pendingEntry?.item?.name || "Your next activity"} is the next unfinished stop. Review the full day before you go.`, action: `Open Day ${pendingEntry?.day?.day || 1}`, view: "itineraryView", focus: `tripDay${pendingEntry?.day?.day || 1}` };
   }
 
-  if (summary) summary.textContent = `${readyCount} of 3 trip essentials ready · suggestions update with your plan.`;
+  if (summary) summary.textContent = `${readyCount} of ${readinessSteps.length} trip essentials ready · suggestions update with your plan.`;
   const prompt = `Make this trip easier with public transit and walks near ${state.profile.walking} minutes.`;
   list.innerHTML = recommendationMarkup({
     ...lead,
-    progressLabel: `${readyCount} of 3 ready`,
+    progressLabel: `${readyCount} of ${readinessSteps.length} ready`,
     progress: Math.round((readyCount / readinessSteps.length) * 100),
     steps: readinessSteps,
     secondary: [

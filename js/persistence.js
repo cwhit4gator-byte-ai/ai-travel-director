@@ -1,6 +1,6 @@
-import { state, saveLocalState } from "./state.js?v=48";
-import { saveCloudState } from "../firebase-client.js?v=48";
-import { setCloudBanner, toast } from "./ui.js?v=48";
+import { state, saveLocalState } from "./state.js?v=49";
+import { saveCloudState } from "../firebase-client.js?v=49";
+import { setCloudBanner, toast } from "./ui.js?v=49";
 
 function cloudPayload() {
   return {
@@ -9,6 +9,7 @@ function cloudPayload() {
     photoURL: state.user?.photoURL || "",
     profile: state.profile,
     trip: state.trip,
+    flightSearch: state.flightSearch,
     experiences: state.experiences,
     collections: state.collections
   };

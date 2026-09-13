@@ -1,7 +1,7 @@
-import { state, defaultProfile, saveLocalState } from "./state.js?v=48";
-import { normalizeInterests, toast, setCloudBanner, trackAppError } from "./ui.js?v=48";
-import { scheduleSave, syncToCloud } from "./persistence.js?v=48";
-import { loadCloudState, savePublicTravelerProfile, signInGoogle, signOutUser, trackAppEvent } from "../firebase-client.js?v=48";
+import { state, defaultProfile, saveLocalState } from "./state.js?v=49";
+import { normalizeInterests, toast, setCloudBanner, trackAppError } from "./ui.js?v=49";
+import { scheduleSave, syncToCloud } from "./persistence.js?v=49";
+import { loadCloudState, savePublicTravelerProfile, signInGoogle, signOutUser, trackAppEvent } from "../firebase-client.js?v=49";
 
 export function createProfile({ showView, renderAll, renderCommunity, renderRecommendations, hydrateCommunityActions }) {
   function hydrateProfileForm() {
@@ -41,6 +41,7 @@ export function createProfile({ showView, renderAll, renderCommunity, renderReco
       if (cloud) {
         state.profile = { ...defaultProfile, ...(cloud.profile || {}) };
         state.trip = cloud.trip ?? state.trip;
+        state.flightSearch = { ...state.flightSearch, ...(cloud.flightSearch || {}) };
         if (Array.isArray(cloud.experiences)) state.experiences = cloud.experiences;
         if (Array.isArray(cloud.collections)) state.collections = cloud.collections;
         saveLocalState();

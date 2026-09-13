@@ -11,6 +11,7 @@ const model = await import(new URL(`../js/trip-model.js?v=${version}`, import.me
 const hotels = await import(new URL(`../js/hotels.js?v=${version}`, import.meta.url));
 const today = await import(new URL(`../js/today.js?v=${version}`, import.meta.url));
 const planner = await import(new URL(`../js/planner.js?v=${version}`, import.meta.url));
+const flights = await import(new URL(`../js/flights.js?v=${version}`, import.meta.url));
 const { state } = await import(new URL(`../js/state.js?v=${version}`, import.meta.url));
 
 test("trip calendar groups consecutive cities and keeps manual hotel dates", () => {
@@ -49,6 +50,38 @@ test("Explore derives each unique city from a route in order", () => {
   };
   assert.deepEqual(model.tripRouteStops(routeTrip), ["Prague", "Brno", "Vienna", "Bratislava", "Budapest"]);
   assert.deepEqual(model.tripRouteStops({ destination: "Czechia", itinerary: [{ overnightLocation: "Prague" }, { overnightLocation: "Prague" }, { overnightLocation: "Brno" }] }), ["Prague", "Brno"]);
+});
+
+test("flight search arrives at the first stop and leaves from the final stop", () => {
+  const routeTrip = {
+    destination: "Prague–Brno–Vienna–Bratislava–Budapest",
+    startDate: "2027-06-10",
+    days: 5,
+    itinerary: [
+      { day: 1, overnightLocation: "Prague", items: [] },
+      { day: 5, overnightLocation: "Budapest", items: [] }
+    ]
+  };
+  assert.deepEqual(flights.tripFlightRoute(routeTrip), {
+    arrivalDestination: "Prague",
+    departureDestination: "Budapest",
+    arrivalDate: "2027-06-10",
+    departureDate: "2027-06-14"
+  });
+  const links = flights.flightSearchLinks({
+    homeAirport: "MCO",
+    arrivalDestination: "Prague",
+    departureDestination: "Budapest",
+    arrivalDate: "2027-06-10",
+    departureDate: "2027-06-14",
+    adults: 2,
+    cabin: "premium_economy"
+  });
+  const query = new URL(links.google).searchParams.get("q");
+  assert.match(query, /premium economy flights from MCO to Prague/);
+  assert.match(query, /from Budapest to MCO/);
+  assert.match(decodeURIComponent(new URL(links.kayak).pathname), /MCO-Prague\/2027-06-10\/Budapest-MCO\/2027-06-14/);
+  assert.equal(flights.flightSearchLinks({ homeAirport: "MCO", arrivalDestination: "Prague", departureDestination: "Budapest", arrivalDate: "2027-06-15", departureDate: "2027-06-14" }), null);
 });
 
 test("Today advances to the current or next unfinished itinerary day", () => {
