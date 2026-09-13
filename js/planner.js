@@ -23,13 +23,24 @@ export function createPlanner({ renderAll }) {
   function initializeChat() {
     const chat = document.getElementById("chatMessages");
     const context = document.getElementById("plannerTripContext");
+    const plannerView = document.getElementById("plannerView");
+    const prompts = document.getElementById("plannerPrompts");
+    const active = Boolean(state.trip);
+    plannerView.classList.toggle("has-active-trip", active);
+    document.getElementById("plannerHeading").textContent = active ? "Ask about your trip" : "Build the whole trip";
     context.hidden = !state.trip;
-    context.textContent = state.trip ? `Active trip: ${state.trip.destination} · ${state.trip.days} days. Ask a question or request a change.` : "";
+    context.textContent = state.trip ? `✦  Active trip · ${state.trip.destination} · ${state.trip.days} days` : "";
+    prompts.innerHTML = active
+      ? `<button class="prompt-chip" type="button" data-planner-prompt="Improve the route without changing completed activities or selected hotels.">Improve route</button><button class="prompt-chip" type="button" data-planner-prompt="Reduce walking and use public transportation where possible.">Reduce walking</button><button class="prompt-chip" type="button" data-planner-prompt="Add one flexible backup activity without disrupting the itinerary.">Add backup</button>`
+      : `<button class="prompt-chip" type="button">5 days of history and architecture under $1,500</button><button class="prompt-chip" type="button">A relaxed public-transit trip with little walking</button><button class="prompt-chip" type="button">Plan a day trip and keep the schedule flexible</button>`;
     document.getElementById("chatInput").placeholder = state.trip ? "Ask about or change your active trip" : "Where do you want to go?";
     if (chat.children.length) return;
-    const mode = state.user && state.cloudConfigured ? "secure AI" : "local planning assistant";
-    const activeTrip = state.trip ? ` I can see your active ${state.trip.destination} itinerary, so you can ask questions or request changes without describing it again.` : "";
-    addMessage(`You are using the ${mode}.${activeTrip} Tell me what you want to plan or change. I’ll use your interests in ${normalizeInterests(state.profile.interests)}.`);
+    if (state.trip) {
+      const mode = state.user && state.cloudConfigured ? "Secure AI" : "Your planning assistant";
+      addMessage(`${mode} is ready for your ${state.trip.destination} trip. Ask a question or describe a change. Completed activities and selected hotels stay protected.`);
+    } else {
+      addMessage(`Tell me where and when you want to travel, your budget, and what matters most. I’ll build a flexible draft around ${normalizeInterests(state.profile.interests)}.`);
+    }
   }
 
   function clearlyRequestsNewTrip(text) {
@@ -53,7 +64,12 @@ export function createPlanner({ renderAll }) {
     return { trip, tripAction: "replace", message: `I created a ${trip.days}-day working plan for ${trip.destination} with a $${trip.budget.toLocaleString("en-US")} budget. It prioritizes ${normalizeInterests(state.profile.interests)}, a ${state.profile.pace} pace, and short walking segments. No bookings were made.` };
   }
 
-  document.querySelectorAll(".prompt-chip").forEach(button => button.addEventListener("click", () => { document.getElementById("chatInput").value = button.textContent; document.getElementById("chatInput").focus(); }));
+  document.getElementById("plannerPrompts").addEventListener("click", event => {
+    const button = event.target.closest(".prompt-chip");
+    if (!button) return;
+    document.getElementById("chatInput").value = button.dataset.plannerPrompt || button.textContent;
+    document.getElementById("chatInput").focus();
+  });
 
   document.getElementById("chatForm").addEventListener("submit", async event => {
     event.preventDefault();

@@ -89,7 +89,7 @@ export function renderRecommendations() {
   }
 
   if (summary) summary.textContent = `${readyCount} of 3 trip essentials ready · suggestions update with your plan.`;
-  const prompt = `Review my ${state.trip.destination} itinerary and improve it for a ${state.profile.pace} pace, public transportation, and walking segments near ${state.profile.walking} minutes. Preserve completed activities and selected hotels.`;
+  const prompt = `Make this trip easier with public transit and walks near ${state.profile.walking} minutes.`;
   list.innerHTML = recommendationMarkup({
     ...lead,
     progressLabel: `${readyCount} of 3 ready`,

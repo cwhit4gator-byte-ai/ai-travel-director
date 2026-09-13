@@ -286,9 +286,12 @@ h3 { margin-bottom: .25rem; font-size: 1.02rem; }
 .home-community-topline p { margin: 0; color: var(--muted); font-size: .79rem; }
 
 .planner-intro { display: flex; gap: 13px; padding: 16px; }.planner-intro p { margin: 3px 0 0; color: var(--muted); }
-.planner-trip-context { margin-top: 10px; padding: 11px 14px; border: 1px solid #bfd1fa; border-radius: 14px; background: var(--sky); color: var(--blue-2); font-size: .8rem; font-weight: 800; }
+#plannerView.has-active-trip .planner-intro { display: none; }
+#plannerView.has-active-trip .page-heading { margin-bottom: 10px; }
+.planner-trip-context { overflow: hidden; margin-top: 0; padding: 10px 13px; border: 1px solid #bfd1fa; border-radius: 13px; background: rgba(234,241,255,.9); color: var(--blue-2); font-size: .78rem; font-weight: 820; text-overflow: ellipsis; white-space: nowrap; }
 .ai-pulse { display: grid; flex: 0 0 42px; height: 42px; place-items: center; border-radius: 14px; background: var(--navy); color: white; box-shadow: 0 0 0 6px var(--sky); }
 .prompt-chips, .map-filters, .day-tabs, .route-stop-list { display: flex; gap: 8px; margin: 14px 0; padding-bottom: 3px; overflow-x: auto; scrollbar-width: none; }
+#plannerView.has-active-trip .prompt-chips { margin: 10px 0 12px; }
 .prompt-chips::-webkit-scrollbar, .map-filters::-webkit-scrollbar, .day-tabs::-webkit-scrollbar, .route-stop-list::-webkit-scrollbar { display: none; }
 .prompt-chip, .filter-chip, .day-tab { flex: 0 0 auto; padding: 9px 12px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--ink); font-size: .82rem; font-weight: 700; }
 .filter-chip.active, .day-tab.active { border-color: var(--blue); background: var(--blue); color: white; }
@@ -649,6 +652,25 @@ h3 { margin-bottom: .25rem; font-size: 1.02rem; }
   .card-list { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 520px) {
+  #plannerView { padding-inline: 15px; }
+  #plannerView .page-heading { margin-top: 2px; margin-bottom: 12px; }
+  #plannerView .page-heading h1 { font-size: 1.55rem; }
+  #plannerView.has-active-trip .page-heading { margin-bottom: 8px; }
+  .planner-intro { gap: 10px; padding: 13px; }
+  .planner-intro p { font-size: .78rem; line-height: 1.4; }
+  .planner-trip-context { padding: 8px 11px; font-size: .71rem; }
+  .prompt-chips { gap: 6px; margin: 10px 0 11px; }
+  .prompt-chip { padding: 7px 10px; font-size: .72rem; }
+  .chat-messages { min-height: 180px; gap: 8px; padding: 2px 0 96px; }
+  .message { max-width: 92%; padding: 10px 12px; border-radius: 16px; font-size: .86rem; line-height: 1.45; }
+  .chat-form { width: calc(100% - 20px); gap: 6px; padding: 7px; border-radius: 17px; }
+  .chat-form textarea { height: 52px; min-height: 52px; max-height: 78px; padding: 7px 8px; resize: none; font-size: .88rem; line-height: 1.35; }
+  .chat-form .send-button { width: 44px; height: 44px; border-radius: 13px; }
+  @supports selector(body:has(*)) {
+    body:has(#plannerView.active #chatInput:focus) .bottom-nav { display: none; }
+    body:has(#plannerView.active #chatInput:focus) .chat-form { bottom: calc(8px + env(safe-area-inset-bottom)); }
+    body:has(#plannerView.active #chatInput:focus) .chat-messages { padding-bottom: 92px; }
+  }
   .trip-adjustment-shell { padding: 19px 18px calc(20px + env(safe-area-inset-bottom)); }
   .trip-adjustment-reasons { gap: 8px; }
   .trip-adjustment-reasons button { min-height: 108px; padding: 11px; grid-template-columns: 38px minmax(0,1fr); gap: 2px 8px; border-radius: 16px; }

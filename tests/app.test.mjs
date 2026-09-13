@@ -444,9 +444,14 @@ test("app modules preserve startup and feature interactions", async t => {
     const activeTrip = state.trip;
     await navigate("plannerView");
     assert.equal(element("plannerTripContext").hidden, false);
-    assert.match(element("plannerTripContext").textContent, /Active trip: Czechia · 2 days/);
+    assert.match(element("plannerTripContext").textContent, /Active trip · Czechia · 2 days/);
+    assert.equal(element("plannerView").classList.contains("has-active-trip"), true);
+    assert.match(element("plannerPrompts").innerHTML, /Improve route/);
+    assert.match(element("plannerPrompts").innerHTML, /Reduce walking/);
     assert.equal(element("chatInput").placeholder, "Ask about or change your active trip");
-    assert.match(element("chatMessages").children[0].textContent, /active Czechia itinerary/);
+    assert.match(element("chatMessages").children[0].textContent, /ready for your Czechia trip/);
+    await element("plannerPrompts").emit("click", { target: target({ class: "prompt-chip", "data-planner-prompt": "Reduce walking and use public transportation where possible." }) });
+    assert.equal(element("chatInput").value, "Reduce walking and use public transportation where possible.");
     element("chatInput").value = "Which activity is next?";
     await element("chatForm").emit("submit", { submitter: target({}) });
     await settle();
