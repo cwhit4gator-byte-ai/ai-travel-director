@@ -1,7 +1,7 @@
-import { state, saveLocalState } from "./state.js?v=47";
-import { escapeHTML, normalizeInterests, toast } from "./ui.js?v=47";
-import { tripDateForDay, formatTripDate, tripOvernightStops } from "./trip-model.js?v=47";
-import { trackAppEvent } from "../firebase-client.js?v=47";
+import { state, saveLocalState } from "./state.js?v=48";
+import { escapeHTML, normalizeInterests, toast } from "./ui.js?v=48";
+import { tripDateForDay, formatTripDate, tripOvernightStops } from "./trip-model.js?v=48";
+import { trackAppEvent } from "../firebase-client.js?v=48";
 
 let recommendationRotation = 0;
 
