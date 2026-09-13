@@ -1,4 +1,4 @@
-import { state } from "./state.js?v=46";
+import { state } from "./state.js?v=47";
 
 export const activityCatalog = [
   { name: "Old town architecture walk", category: "Architecture", time: "9:00 AM", cost: 0, icon: "⌂", note: "Begin early for quiet streets and softer light." },

@@ -1,8 +1,8 @@
-import { state, saveLocalState } from "./state.js?v=46";
-import { escapeHTML, safeImageURL, toast } from "./ui.js?v=46";
-import { trackAppEvent } from "../firebase-client.js?v=46";
-import { focusGooglePlaceResult, renderGoogleMap, renderGooglePlaceResultsMap, renderGoogleRouteMap, searchNearbyPlaces } from "../maps.js?v=46";
-import { currentDestination, tripRouteStops } from "./trip-model.js?v=46";
+import { state, saveLocalState } from "./state.js?v=47";
+import { escapeHTML, safeImageURL, toast } from "./ui.js?v=47";
+import { trackAppEvent } from "../firebase-client.js?v=47";
+import { focusGooglePlaceResult, renderGoogleMap, renderGooglePlaceResultsMap, renderGoogleRouteMap, searchNearbyPlaces } from "../maps.js?v=47";
+import { currentDestination, tripRouteStops } from "./trip-model.js?v=47";
 
 export function createExplore({ renderCommunityMapPicks, openSmartAddDialog }) {
   let mapRequestId = 0;

@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b1830" />
   <meta name="description" content="AI-first travel planning, live itineraries, maps, traveler insights, and safety tools." />
   <title>AI Travel Director</title>
-  <link rel="manifest" href="manifest.json?v=46" />
+  <link rel="manifest" href="manifest.json?v=47" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=46" />
+  <link rel="stylesheet" href="styles.css?v=47" />
 </head>
 <body>
   <div class="app-shell">
@@ -80,10 +80,10 @@
 
         <section class="section-block home-recommendations">
           <div class="section-heading">
-            <div><p class="eyebrow">PERSONALIZED</p><h2>Made for your trip</h2></div>
-            <button id="refreshRecommendations" class="text-button">Refresh</button>
+            <div><p class="eyebrow">PERSONALIZED</p><h2>Made for your trip</h2><p id="recommendationSummary" class="section-subtitle">Your most useful next moves, in one place.</p></div>
+            <button id="refreshRecommendations" class="text-button" type="button">New ideas</button>
           </div>
-          <div id="recommendationList" class="recommendation-grid"></div>
+          <div id="recommendationList" class="recommendation-dashboard" aria-live="polite"></div>
         </section>
 
         <details class="section-block home-community-panel">
@@ -479,7 +479,7 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="affiliate-config.js?v=46"></script>
-  <script type="module" src="app.js?v=46"></script>
+  <script src="affiliate-config.js?v=47"></script>
+  <script type="module" src="app.js?v=47"></script>
 </body>
 </html>

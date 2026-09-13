@@ -123,11 +123,28 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.match(element("communityList").innerHTML, /Charles Bridge/);
     assert.ok(document.querySelector(".home-community-panel"));
     assert.equal(document.querySelectorAll(".metric-card").length, 4);
+    assert.match(element("recommendationList").innerHTML, /class="recommendation-lead"/);
+    assert.match(element("recommendationList").innerHTML, /Add your travel dates/);
+    assert.match(element("recommendationList").innerHTML, /1 of 3 ready/);
+    assert.equal(element("recommendationList").handlers.get("click").length, 1);
     assert.equal(element("itineraryContent").handlers.get("click").length, 1);
     assert.equal(element("hotelList").handlers.get("click").length, 1);
     assert.equal(startupErrors.length, 1);
     assert.equal(startupErrors[0][0], "Firebase configuration is incomplete:");
     assert.equal(ui.safeImageURL(""), "");
+  });
+  await t.test("Made for your trip prioritizes setup and opens useful actions", async () => {
+    await element("recommendationList").emit("click", { target: target({ "data-recommendation-view": "itineraryView", "data-recommendation-focus": "tripStartDate" }) });
+    assert.equal(state.currentView, "itineraryView");
+    await navigate("homeView");
+    await element("recommendationList").emit("click", { target: target({ "data-recommendation-view": "exploreView", "data-recommendation-query": "history near Prague" }) });
+    assert.equal(state.currentView, "exploreView");
+    assert.equal(state.mapQuery, "history near Prague");
+    await navigate("homeView");
+    assert.match(element("recommendationList").innerHTML, /Find history close to your planned stops/);
+    await element("refreshRecommendations").emit("click");
+    assert.match(element("recommendationList").innerHTML, /Find architecture close to your planned stops/);
+    assert.match(element("toast").textContent, /Fresh ideas/);
   });
   await t.test("bottom navigation uses consistent icons and announces the active page", async () => {
     const navItems = document.querySelectorAll(".nav-item");

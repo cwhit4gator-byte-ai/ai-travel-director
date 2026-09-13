@@ -1,6 +1,9 @@
-import { state } from "./state.js?v=46";
-import { escapeHTML, normalizeInterests, toast } from "./ui.js?v=46";
-import { tripDateForDay, formatTripDate } from "./trip-model.js?v=46";
+import { state, saveLocalState } from "./state.js?v=47";
+import { escapeHTML, normalizeInterests, toast } from "./ui.js?v=47";
+import { tripDateForDay, formatTripDate, tripOvernightStops } from "./trip-model.js?v=47";
+import { trackAppEvent } from "../firebase-client.js?v=47";
+
+let recommendationRotation = 0;
 
 export function renderHome() {
   const hero = document.getElementById("tripHero");
@@ -36,17 +39,103 @@ export function renderHome() {
 
 export function renderRecommendations() {
   const interests = normalizeInterests(state.profile.interests).split(",").map(item => item.trim()).filter(Boolean);
-  const destination = state.trip?.destination || "your next destination";
-  const cards = [
-    { icon: "⌂", title: "Architecture before the crowds", text: `Start ${destination} with a historic district matched to your ${state.profile.pace} pace.`, tag: interests[0] || "History" },
-    { icon: "↔", title: "Transit-first route", text: `Keep walking segments near ${state.profile.walking} minutes and connect major stops by public transportation.`, tag: "Low friction" },
-    { icon: "✦", title: "A flexible final afternoon", text: "Hold one indoor and one outdoor option so the day can adapt without disrupting the trip.", tag: "AI suggestion" }
+  const selectedInterest = interests[recommendationRotation % Math.max(1, interests.length)] || "local culture";
+  const summary = document.getElementById("recommendationSummary");
+  const list = document.getElementById("recommendationList");
+
+  if (!state.trip) {
+    if (summary) summary.textContent = "Start with your preferences, then turn inspiration into a plan.";
+    list.innerHTML = recommendationMarkup({
+      status: "BEST NEXT STEP",
+      title: "Build a trip around what you enjoy",
+      text: `Your ${state.profile.pace} pace, ${state.profile.walking}-minute walking preference, and interest in ${selectedInterest} are ready to guide the AI.`,
+      action: "Plan with AI",
+      view: "plannerView",
+      prompt: `Plan a trip around ${selectedInterest} with a ${state.profile.pace} pace, public transportation, and walking segments near ${state.profile.walking} minutes.`,
+      progressLabel: "Preferences ready",
+      progress: 34,
+      steps: [{ label: "Preferences", ready: true }, { label: "Destination", ready: false }, { label: "Trip plan", ready: false }],
+      secondary: [
+        { icon: "⌖", label: "DISCOVER", title: `Explore ${selectedInterest} ideas`, text: "Open the map and see places that fit your interests.", action: "Explore places", view: "exploreView", query: selectedInterest },
+        { icon: "◎", label: "YOUR STYLE", title: "Review travel preferences", text: `Keep recommendations aligned with your pace, budget, and ${state.profile.walking}-minute walking limit.`, action: "Open profile", view: "profileView" }
+      ]
+    });
+    return;
+  }
+
+  const itinerary = state.trip.itinerary || [];
+  const activities = itinerary.flatMap(day => (day.items || []).filter(item => item.category !== "Hotel"));
+  const pendingEntry = itinerary.map(day => ({ day, item: (day.items || []).find(item => item.category !== "Hotel" && !item.done) })).find(entry => entry.item);
+  const stops = tripOvernightStops();
+  const missingHotel = stops.find(stop => !state.trip.hotelSelections?.[stop.id]);
+  const readinessSteps = [
+    { label: "Dates", ready: Boolean(state.trip.startDate) },
+    { label: "Stays", ready: stops.length === 0 || !missingHotel },
+    { label: "Route", ready: activities.length > 0 }
   ];
-  document.getElementById("recommendationList").innerHTML = cards.map(card => `
-    <article class="recommendation-card"><span class="card-icon">${card.icon}</span><h3>${escapeHTML(card.title)}</h3><p>${escapeHTML(card.text)}</p><div class="tag-row"><span class="tag">${escapeHTML(card.tag)}</span></div></article>
-  `).join("");
+  const readyCount = readinessSteps.filter(step => step.ready).length;
+  const location = pendingEntry?.day?.overnightLocation || pendingEntry?.item?.location || stops[0]?.location || state.trip.destination;
+  let lead;
+  if (!state.trip.startDate) {
+    lead = { status: "TRIP SETUP", title: "Add your travel dates", text: "Set the start date once to align every itinerary day and hotel stay automatically.", action: "Set trip dates", view: "itineraryView", focus: "tripStartDate" };
+  } else if (missingHotel) {
+    lead = { status: "NEEDS ATTENTION", title: `Choose your stay in ${missingHotel.location}`, text: "Compare three real properties and keep this overnight stop connected to the itinerary.", action: "Compare hotels", view: "hotelsView", hotelStop: missingHotel.id };
+  } else if (!activities.length) {
+    lead = { status: "BUILD YOUR DAYS", title: "Fill in your itinerary", text: `Ask the AI to add useful activities across ${state.trip.destination}, matched to your interests and pace.`, action: "Build with AI", view: "plannerView", prompt: `Add a complete day-by-day itinerary to my ${state.trip.destination} trip. Prioritize ${selectedInterest}, public transportation, and walking segments near ${state.profile.walking} minutes.` };
+  } else if (activities.every(item => item.done)) {
+    lead = { status: "TRIP COMPLETE", title: "Capture what you discovered", text: "Share a useful place or lesson with other travelers, or start shaping your next trip.", action: "Share an insight", view: "communityView" };
+  } else {
+    lead = { status: "TRIP READY", title: `Review Day ${pendingEntry?.day?.day || 1}`, text: `${pendingEntry?.item?.name || "Your next activity"} is the next unfinished stop. Review the full day before you go.`, action: `Open Day ${pendingEntry?.day?.day || 1}`, view: "itineraryView", focus: `tripDay${pendingEntry?.day?.day || 1}` };
+  }
+
+  if (summary) summary.textContent = `${readyCount} of 3 trip essentials ready · suggestions update with your plan.`;
+  const prompt = `Review my ${state.trip.destination} itinerary and improve it for a ${state.profile.pace} pace, public transportation, and walking segments near ${state.profile.walking} minutes. Preserve completed activities and selected hotels.`;
+  list.innerHTML = recommendationMarkup({
+    ...lead,
+    progressLabel: `${readyCount} of 3 ready`,
+    progress: Math.round((readyCount / readinessSteps.length) * 100),
+    steps: readinessSteps,
+    secondary: [
+      { icon: "⌖", label: "NEAR YOUR ROUTE", title: `Explore around ${location}`, text: `Find ${selectedInterest} close to your planned stops.`, action: "Open map", view: "exploreView", query: `${selectedInterest} near ${location}` },
+      { icon: "✦", label: "AI CHECK", title: "Fine-tune the whole trip", text: `Keep the route comfortable, transit-friendly, and near your ${state.profile.walking}-minute walking preference.`, action: "Ask AI", view: "plannerView", prompt }
+    ]
+  });
 }
 
-export function initializeHome() {
-  document.getElementById("refreshRecommendations").addEventListener("click", () => { renderRecommendations(); toast("Recommendations refreshed"); });
+function recommendationMarkup({ status, title, text, action, view, prompt = "", query = "", hotelStop = "", focus = "", progressLabel, progress, steps, secondary }) {
+  const attributes = item => `data-recommendation-view="${escapeHTML(item.view)}"${item.prompt ? ` data-recommendation-prompt="${escapeHTML(item.prompt)}"` : ""}${item.query ? ` data-recommendation-query="${escapeHTML(item.query)}"` : ""}${item.hotelStop ? ` data-recommendation-hotel-stop="${escapeHTML(item.hotelStop)}"` : ""}${item.focus ? ` data-recommendation-focus="${escapeHTML(item.focus)}"` : ""}`;
+  return `<article class="recommendation-lead">
+    <div class="recommendation-lead-top"><span>${escapeHTML(status)}</span><strong>${escapeHTML(progressLabel)}</strong></div>
+    <div class="recommendation-lead-copy"><span class="recommendation-lead-icon" aria-hidden="true">✦</span><div><h3>${escapeHTML(title)}</h3><p>${escapeHTML(text)}</p></div></div>
+    <div class="recommendation-readiness"><div class="recommendation-progress" aria-label="${escapeHTML(progressLabel)}"><span style="width:${progress}%"></span></div><div class="recommendation-steps">${steps.map(step => `<span class="${step.ready ? "ready" : ""}">${step.ready ? "✓" : "○"} ${escapeHTML(step.label)}</span>`).join("")}</div></div>
+    <button class="recommendation-primary-action" type="button" ${attributes({ view, prompt, query, hotelStop, focus })}>${escapeHTML(action)}<span aria-hidden="true">›</span></button>
+  </article>
+  <div class="recommendation-secondary-grid">${secondary.map(item => `<button class="recommendation-option" type="button" ${attributes(item)}><span class="recommendation-option-icon" aria-hidden="true">${item.icon}</span><span class="recommendation-option-copy"><small>${escapeHTML(item.label)}</small><strong>${escapeHTML(item.title)}</strong><em>${escapeHTML(item.text)}</em><b>${escapeHTML(item.action)} <span aria-hidden="true">›</span></b></span></button>`).join("")}</div>`;
+}
+
+export function initializeHome({ showView } = {}) {
+  document.getElementById("refreshRecommendations").addEventListener("click", () => {
+    recommendationRotation++;
+    renderRecommendations();
+    toast("Fresh ideas added for your trip");
+  });
+  document.getElementById("recommendationList").addEventListener("click", event => {
+    const action = event.target.closest("[data-recommendation-view]");
+    if (!action) return;
+    if (action.dataset.recommendationQuery) {
+      state.mapQuery = action.dataset.recommendationQuery;
+      saveLocalState();
+    }
+    if (action.dataset.recommendationHotelStop) state.selectedOvernightLocation = action.dataset.recommendationHotelStop;
+    showView?.(action.dataset.recommendationView);
+    if (action.dataset.recommendationPrompt) {
+      const input = document.getElementById("chatInput");
+      if (input) {
+        input.value = action.dataset.recommendationPrompt;
+        input.focus();
+      }
+    }
+    if (action.dataset.recommendationFocus) document.getElementById(action.dataset.recommendationFocus)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    trackAppEvent("home_recommendation_opened", { destination: state.trip?.destination || "none", view_name: action.dataset.recommendationView });
+  });
 }
