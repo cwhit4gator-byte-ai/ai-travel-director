@@ -6,9 +6,9 @@
   <meta name="theme-color" content="#0b1830" />
   <meta name="description" content="AI-first travel planning, live itineraries, maps, traveler insights, and safety tools." />
   <title>AI Travel Director</title>
-  <link rel="manifest" href="manifest.json?v=45" />
+  <link rel="manifest" href="manifest.json?v=46" />
   <link rel="icon" href="icon.svg" type="image/svg+xml" />
-  <link rel="stylesheet" href="styles.css?v=45" />
+  <link rel="stylesheet" href="styles.css?v=46" />
 </head>
 <body>
   <div class="app-shell">
@@ -409,6 +409,15 @@
         </div>
         <p class="trip-adjustment-protection"><span aria-hidden="true">✓</span> Completed stops and hotel selections stay unchanged.</p>
       </section>
+      <section id="tripAdjustmentOptionsStep" class="trip-adjustment-step" hidden>
+        <div class="trip-rescue-heading">
+          <div><p class="eyebrow">LIVE TRIP RESCUE</p><h3 id="tripAdjustmentOptionsTitle">Choose your best fit</h3></div>
+          <span class="live-results-badge"><i aria-hidden="true"></i> Live options</span>
+        </div>
+        <p id="tripAdjustmentOptionsContext" class="dialog-context"></p>
+        <div id="tripAdjustmentOptions" class="trip-adjustment-options" aria-live="polite"></div>
+        <button id="backTripAdjustmentOptions" class="secondary-button" type="button">Back to reasons</button>
+      </section>
       <section id="tripAdjustmentReviewStep" class="trip-adjustment-step" hidden>
         <p class="dialog-context">Review the suggestion before it changes your itinerary.</p>
         <div class="trip-adjustment-comparison">
@@ -420,12 +429,15 @@
           <span class="adjustment-arrow" aria-hidden="true">↓</span>
           <article class="adjustment-plan-card after">
             <div><small>UPDATED PLAN</small><span id="tripAdjustmentReasonBadge"></span></div>
+            <div id="tripAdjustmentReviewPhoto" class="adjustment-review-photo" hidden><img id="tripAdjustmentAfterPhoto" alt="" /><small id="tripAdjustmentPhotoCredit"></small></div>
             <strong id="tripAdjustmentAfterName"></strong>
             <span id="tripAdjustmentAfterDetails"></span>
+            <span id="tripAdjustmentAfterMeta" class="adjustment-plan-meta"></span>
             <p id="tripAdjustmentAfterNote"></p>
           </article>
+          <div id="tripAdjustmentSchedulePreview" class="adjustment-schedule-preview" hidden></div>
         </div>
-        <p class="trip-adjustment-protection"><span aria-hidden="true">✓</span> Only this unfinished stop will change. Completed activities and lodging are protected.</p>
+        <p id="tripAdjustmentProtection" class="trip-adjustment-protection"><span aria-hidden="true">✓</span> Only this unfinished stop will change. Completed activities and lodging are protected.</p>
         <div class="trip-adjustment-actions">
           <button id="backTripAdjustment" class="secondary-button" type="button">Back</button>
           <button id="applyTripAdjustment" class="primary-button" type="button">Apply update</button>
@@ -467,7 +479,7 @@
   </dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="affiliate-config.js?v=45"></script>
-  <script type="module" src="app.js?v=45"></script>
+  <script src="affiliate-config.js?v=46"></script>
+  <script type="module" src="app.js?v=46"></script>
 </body>
 </html>

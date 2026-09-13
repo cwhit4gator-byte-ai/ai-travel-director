@@ -61,6 +61,9 @@ window.google = { maps: { importLibrary: async library => ({
       formattedAddress: hotelSearch ? "Veleslavínova 2a, Prague, Czechia" : `${index + 1} Historic Square, Brno, Czechia`,
       rating: 4.5,
       userRatingCount: 100 + index,
+      businessStatus: "OPERATIONAL",
+      utcOffsetMinutes: 0,
+      currentOpeningHours: { periods: [{ open: { day: 0, hour: 0, minute: 0 } }] },
       primaryTypeDisplayName: hotelSearch ? "Hotel" : "Historical landmark",
       location: { lat: () => 49.19 + index * .01, lng: () => 16.60 + index * .01 },
       photos: [{
@@ -88,6 +91,7 @@ const featuredPlaceModel = await import(moduleURL("featured-place"));
 const itineraryPhotoModel = await import(moduleURL("itinerary-photos"));
 const smartAddModel = await import(moduleURL("smart-add"));
 const tripAdjustmentModel = await import(moduleURL("trip-adjustments"));
+const mapsModel = await import(new URL(`../maps.js?v=${version}`, import.meta.url));
 const ui = await import(moduleURL("ui"));
 const element = id => document.getElementById(id);
 const navigate = async view => {
@@ -231,7 +235,7 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.equal(element("todayStatusBadge").attributes["data-phase"], "upcoming");
     assert.match(element("todayHeading").textContent, /Day 1 is ready/);
   });
-  await t.test("Today adjustments preview one protected change before applying it", async () => {
+  await t.test("Trip Rescue offers live choices and previews one protected change before applying it", async () => {
     await navigate("homeView");
     const next = directions.nextIncompleteTripStop(state.trip.itinerary[0]);
     const originalStop = structuredClone(next);
@@ -240,16 +244,31 @@ test("app modules preserve startup and feature interactions", async t => {
     const protectedHotels = structuredClone(state.trip.hotelSelections);
     const completedStops = state.trip.itinerary[0].items.filter(item => item.done).map(item => item.id);
     assert.equal(tripAdjustmentModel.shiftTime("11:30 PM"), "12:30 AM");
+    assert.equal(mapsModel.placeOpenNow({ businessStatus: "OPERATIONAL", utcOffsetMinutes: 0, currentOpeningHours: { periods: [{ open: { day: 0, hour: 0, minute: 0 } }] } }, new Date("2027-01-05T12:00:00Z")), true);
+    assert.equal(mapsModel.placeOpenNow({ businessStatus: "CLOSED_TEMPORARILY" }, new Date("2027-01-05T12:00:00Z")), false);
+    const delayDay = { items: [{ id: "done", name: "Done", time: "9:00 AM", done: true }, { id: "next", name: "Next", time: "10:00 AM", done: false }, { id: "hotel", name: "Hotel", time: "3:00 PM", category: "Hotel", done: false }, { id: "later", name: "Later", time: "4:00 PM", done: false }] };
+    assert.deepEqual(tripAdjustmentModel.scheduleUpdatesForDelay(delayDay, delayDay.items[1], 60).map(update => [update.itemId, update.after]), [["next", "11:00 AM"], ["later", "5:00 PM"]]);
     await element("todayDashboard").emit("click", { target: target({ "data-today-action": "change" }) });
     assert.equal(element("tripAdjustmentDialog").open, true);
     assert.match(element("tripAdjustmentContext").textContent, new RegExp(next.name));
     await element("tripAdjustmentReasons").emit("click", { target: target({ "data-adjustment-reason": "weather" }) });
     assert.equal(element("tripAdjustmentReasonStep").hidden, true);
+    assert.equal(element("tripAdjustmentOptionsStep").hidden, false);
+    assert.match(element("tripAdjustmentOptions").innerHTML, /Prague Old Town Hall/);
+    assert.match(element("tripAdjustmentOptions").innerHTML, /Prague Museum/);
+    assert.doesNotMatch(element("tripAdjustmentOptions").innerHTML, />Prague Castle</);
+    assert.match(placeSearchQueries.at(-1), /indoor museums, galleries, and historic attractions in Prague/);
+    assert.equal(next.name, originalStop.name);
+    await element("tripAdjustmentOptions").emit("click", { target: target({ "data-adjustment-option": "0" }) });
+    assert.equal(element("tripAdjustmentOptionsStep").hidden, true);
     assert.equal(element("tripAdjustmentReviewStep").hidden, false);
-    assert.match(element("tripAdjustmentAfterName").textContent, /Indoor highlight/);
+    assert.equal(element("tripAdjustmentAfterName").textContent, "Prague Old Town Hall");
+    assert.match(element("tripAdjustmentAfterMeta").textContent, /Open now · 4.5 ★/);
+    assert.match(element("tripAdjustmentAfterPhoto").src, /Prague%20Old%20Town%20Hall/);
     assert.equal(next.name, originalStop.name);
     await element("applyTripAdjustment").emit("click");
-    assert.match(next.name, /Indoor highlight/);
+    assert.equal(next.name, "Prague Old Town Hall");
+    assert.equal(next.placeId, "place-3");
     assert.equal(element("tripAdjustmentDialog").open, false);
     assert.deepEqual(state.trip.itinerary[0].items.filter(item => item.done).map(item => item.id), completedStops);
     assert.deepEqual(state.trip.hotelSelections, protectedHotels);

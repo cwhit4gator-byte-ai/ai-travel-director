@@ -1,20 +1,20 @@
-import { initializeCloud, observeAuth, trackAppEvent } from "./firebase-client.js?v=45";
-import { state, returningVisitor } from "./js/state.js?v=45";
-import { setCloudBanner, trackAppError } from "./js/ui.js?v=45";
-import { renderHome, renderRecommendations, initializeHome } from "./js/home.js?v=45";
-import { createFeaturedPlace } from "./js/featured-place.js?v=45";
-import { createPlanner } from "./js/planner.js?v=45";
-import { createHotels } from "./js/hotels.js?v=45";
-import { createItinerary } from "./js/itinerary.js?v=45";
-import { createCommunity } from "./js/community.js?v=45";
-import { createExplore } from "./js/explore.js?v=45";
-import { createProfile } from "./js/profile.js?v=45";
-import { initializeSafety } from "./js/safety.js?v=45";
-import { initializePWA } from "./js/pwa.js?v=45";
-import { createOnboarding } from "./js/onboarding.js?v=45";
-import { createToday } from "./js/today.js?v=45";
-import { createSmartAdd } from "./js/smart-add.js?v=45";
-import { createTripAdjustments } from "./js/trip-adjustments.js?v=45";
+import { initializeCloud, observeAuth, trackAppEvent } from "./firebase-client.js?v=46";
+import { state, returningVisitor } from "./js/state.js?v=46";
+import { setCloudBanner, trackAppError } from "./js/ui.js?v=46";
+import { renderHome, renderRecommendations, initializeHome } from "./js/home.js?v=46";
+import { createFeaturedPlace } from "./js/featured-place.js?v=46";
+import { createPlanner } from "./js/planner.js?v=46";
+import { createHotels } from "./js/hotels.js?v=46";
+import { createItinerary } from "./js/itinerary.js?v=46";
+import { createCommunity } from "./js/community.js?v=46";
+import { createExplore } from "./js/explore.js?v=46";
+import { createProfile } from "./js/profile.js?v=46";
+import { initializeSafety } from "./js/safety.js?v=46";
+import { initializePWA } from "./js/pwa.js?v=46";
+import { createOnboarding } from "./js/onboarding.js?v=46";
+import { createToday } from "./js/today.js?v=46";
+import { createSmartAdd } from "./js/smart-add.js?v=46";
+import { createTripAdjustments } from "./js/trip-adjustments.js?v=46";
 
 // Each feature owns its handlers. Only navigation and page refresh cross features.
 const planner = createPlanner({ renderAll });
