@@ -1,7 +1,7 @@
-import { state, defaultProfile, saveLocalState } from "./state.js?v=45";
-import { normalizeInterests, toast, setCloudBanner, trackAppError } from "./ui.js?v=45";
-import { scheduleSave, syncToCloud } from "./persistence.js?v=45";
-import { loadCloudState, savePublicTravelerProfile, signInGoogle, signOutUser, trackAppEvent } from "../firebase-client.js?v=45";
+import { state, defaultProfile, saveLocalState } from "./state.js?v=46";
+import { normalizeInterests, toast, setCloudBanner, trackAppError } from "./ui.js?v=46";
+import { scheduleSave, syncToCloud } from "./persistence.js?v=46";
+import { loadCloudState, savePublicTravelerProfile, signInGoogle, signOutUser, trackAppEvent } from "../firebase-client.js?v=46";
 
 export function createProfile({ showView, renderAll, renderCommunity, renderRecommendations, hydrateCommunityActions }) {
   function hydrateProfileForm() {

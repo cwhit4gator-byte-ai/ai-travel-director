@@ -193,6 +193,27 @@ export async function focusGooglePlaceResult(element, place) {
   return place.name || place.address || "Selected place";
 }
 
+export function placeOpenNow(place, now = new Date()) {
+  const businessStatus = String(place?.businessStatus || "");
+  if (businessStatus && businessStatus !== "OPERATIONAL") return false;
+  const periods = place?.currentOpeningHours?.periods || place?.regularOpeningHours?.periods;
+  const utcOffsetMinutes = Number(place?.utcOffsetMinutes);
+  if (!Array.isArray(periods) || !periods.length || !Number.isFinite(utcOffsetMinutes)) return null;
+  const local = new Date(now.getTime() + utcOffsetMinutes * 60000);
+  const minuteOfWeek = local.getUTCDay() * 1440 + local.getUTCHours() * 60 + local.getUTCMinutes();
+  const week = 7 * 1440;
+  return periods.some(period => {
+    const open = period?.open;
+    if (!open) return false;
+    const openMinute = Number(open.day) * 1440 + Number(open.hour || 0) * 60 + Number(open.minute || 0);
+    if (!period.close) return true;
+    const close = period.close;
+    let closeMinute = Number(close.day) * 1440 + Number(close.hour || 0) * 60 + Number(close.minute || 0);
+    if (closeMinute <= openMinute) closeMinute += week;
+    return [minuteOfWeek, minuteOfWeek + week].some(current => current >= openMinute && current < closeMinute);
+  });
+}
+
 export async function searchNearbyPlaces(location, category = "top sights", maximum = 6) {
   await loadLibraries();
   const searchIntent = {
@@ -206,7 +227,7 @@ export async function searchNearbyPlaces(location, category = "top sights", maxi
   const response = await Promise.race([
     Place.searchByText({
       textQuery: `${searchIntent} in ${location}`,
-      fields: ["id", "displayName", "formattedAddress", "shortFormattedAddress", "location", "rating", "userRatingCount", "photos", "googleMapsURI", "priceLevel", "primaryTypeDisplayName"],
+      fields: ["id", "displayName", "formattedAddress", "shortFormattedAddress", "location", "rating", "userRatingCount", "photos", "googleMapsURI", "priceLevel", "primaryTypeDisplayName", "businessStatus", "currentOpeningHours", "regularOpeningHours", "utcOffsetMinutes"],
       maxResultCount: Math.max(3, Math.min(10, Number(maximum) || 6)),
       language: "en-US"
     }),
@@ -215,6 +236,8 @@ export async function searchNearbyPlaces(location, category = "top sights", maxi
   return (response.places || []).map(place => {
     const photo = place.photos?.[0];
     const attributions = (photo?.authorAttributions || []).filter(item => item?.displayName);
+    const businessStatus = String(place.businessStatus || "");
+    const openNow = placeOpenNow(place);
     return {
       id: place.id || "",
       name: place.displayName || "Place",
@@ -223,6 +246,9 @@ export async function searchNearbyPlaces(location, category = "top sights", maxi
       rating: Number(place.rating || 0),
       reviewCount: Number(place.userRatingCount || 0),
       priceLevel: String(place.priceLevel || ""),
+      openNow,
+      openingText: openNow === true ? "Open now" : openNow === false ? "Closed now" : "Check today’s hours",
+      businessStatus,
       latitude: typeof place.location?.lat === "function" ? place.location.lat() : Number(place.location?.lat),
       longitude: typeof place.location?.lng === "function" ? place.location.lng() : Number(place.location?.lng),
       photoURL: photo?.getURI ? photo.getURI({ maxWidth: 400, maxHeight: 300 }) : "",
@@ -241,7 +267,7 @@ export async function searchPlaceDetails(query, maximum = 3) {
   const response = await Promise.race([
     Place.searchByText({
       textQuery: normalizedQuery,
-      fields: ["id", "displayName", "formattedAddress", "shortFormattedAddress", "location", "rating", "userRatingCount", "photos", "googleMapsURI", "primaryTypeDisplayName"],
+      fields: ["id", "displayName", "formattedAddress", "shortFormattedAddress", "location", "rating", "userRatingCount", "photos", "googleMapsURI", "primaryTypeDisplayName", "businessStatus", "currentOpeningHours", "regularOpeningHours", "utcOffsetMinutes"],
       maxResultCount: Math.max(1, Math.min(5, Number(maximum) || 3)),
       language: "en-US"
     }),
@@ -250,6 +276,8 @@ export async function searchPlaceDetails(query, maximum = 3) {
   return (response.places || []).map(place => {
     const photo = place.photos?.[0];
     const attributions = (photo?.authorAttributions || []).filter(item => item?.displayName);
+    const businessStatus = String(place.businessStatus || "");
+    const openNow = placeOpenNow(place);
     return {
       id: place.id || "",
       name: place.displayName || normalizedQuery,
@@ -257,6 +285,9 @@ export async function searchPlaceDetails(query, maximum = 3) {
       category: place.primaryTypeDisplayName || "Place",
       rating: Number(place.rating || 0),
       reviewCount: Number(place.userRatingCount || 0),
+      openNow,
+      openingText: openNow === true ? "Open now" : openNow === false ? "Closed now" : "Check today’s hours",
+      businessStatus,
       latitude: typeof place.location?.lat === "function" ? place.location.lat() : Number(place.location?.lat),
       longitude: typeof place.location?.lng === "function" ? place.location.lng() : Number(place.location?.lng),
       photoURL: photo?.getURI ? photo.getURI({ maxWidth: 900, maxHeight: 600 }) : "",

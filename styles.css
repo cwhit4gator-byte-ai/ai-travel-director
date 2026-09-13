@@ -495,6 +495,40 @@ h3 { margin-bottom: .25rem; font-size: 1.02rem; }
 .adjustment-arrow { justify-self: center; display: grid; width: 30px; height: 30px; place-items: center; margin: -2px 0; border-radius: 50%; background: var(--navy); color: white; font-weight: 900; }
 .trip-adjustment-actions { display: grid; grid-template-columns: minmax(110px, .7fr) minmax(170px, 1.3fr); gap: 10px; }
 .trip-adjustment-actions button { width: 100%; }
+.trip-rescue-heading { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
+.trip-rescue-heading h3 { margin: 2px 0 0; font-size: 1.05rem; }
+.live-results-badge { display: inline-flex; flex: 0 0 auto; gap: 6px; align-items: center; padding: 7px 9px; border-radius: 999px; background: #e8f8f2; color: #176f52; font-size: .7rem; font-weight: 850; }
+.live-results-badge i { width: 7px; height: 7px; border-radius: 50%; background: #24a873; box-shadow: 0 0 0 4px rgba(36,168,115,.13); }
+.trip-adjustment-options { display: grid; gap: 10px; }
+.trip-adjustment-option { display: grid; min-width: 0; grid-template-columns: 92px minmax(0,1fr) 22px; gap: 13px; align-items: center; padding: 10px; border: 1px solid #ccd8ea; border-radius: 18px; background: linear-gradient(145deg, #fff, #f5f8fe); color: var(--ink); text-align: left; box-shadow: 0 7px 20px rgba(20,38,72,.05); }
+.trip-adjustment-option:hover, .trip-adjustment-option:focus-visible { border-color: #78a0f7; box-shadow: 0 10px 26px rgba(37,111,244,.15); transform: translateY(-1px); }
+.trip-adjustment-option-media { position: relative; display: grid; width: 92px; height: 86px; place-items: center; overflow: hidden; border-radius: 14px; background: linear-gradient(145deg, #e7efff, #eff4ff); color: var(--blue-2); font-size: 1.35rem; }
+.trip-adjustment-option-media img { width: 100%; height: 100%; object-fit: cover; }
+.trip-adjustment-option-media b { position: absolute; top: 6px; left: 6px; display: grid; width: 23px; height: 23px; place-items: center; border-radius: 50%; background: rgba(11,24,48,.85); color: white; font-size: .68rem; }
+.trip-adjustment-option-media small { position: absolute; right: 4px; bottom: 4px; left: 4px; overflow: hidden; padding: 3px 4px; border-radius: 5px; background: rgba(5,15,35,.72); color: white; font-size: .45rem; line-height: 1.2; text-overflow: ellipsis; white-space: nowrap; }
+.trip-adjustment-option-copy { display: grid; min-width: 0; gap: 3px; }
+.trip-adjustment-option-copy > span:first-child { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 2px; }
+.trip-adjustment-option-copy em { padding: 4px 7px; border-radius: 999px; background: #edf1f7; color: #5c687a; font-size: .62rem; font-style: normal; font-weight: 850; }
+.trip-adjustment-option-copy .option-status.open { background: #def5ea; color: #187052; }
+.trip-adjustment-option-copy .option-status.closed { background: #ffebe8; color: #a73d35; }
+.trip-adjustment-option-copy strong { overflow: hidden; font-size: .91rem; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.trip-adjustment-option-copy small { overflow: hidden; color: #526174; font-size: .7rem; text-overflow: ellipsis; white-space: nowrap; }
+.trip-adjustment-option-copy > span:not(:first-child) { color: var(--muted); font-size: .68rem; line-height: 1.25; }
+.trip-adjustment-option-arrow { color: var(--blue); font-size: 1.65rem; }
+.trip-rescue-loading, .trip-rescue-error { display: grid; min-height: 220px; place-items: center; align-content: center; gap: 8px; padding: 24px; border: 1px dashed #b8c9e5; border-radius: 19px; background: #f6f9ff; text-align: center; }
+.trip-rescue-loading small, .trip-rescue-error p { margin: 0; color: var(--muted); font-size: .78rem; line-height: 1.45; }
+.trip-rescue-error > span { display: grid; width: 48px; height: 48px; place-items: center; border-radius: 15px; background: #e7efff; color: var(--blue); font-size: 1.4rem; }
+.trip-rescue-error button { margin-top: 5px; padding: 10px 14px; border: 0; border-radius: 12px; background: var(--blue); color: white; font-weight: 850; }
+.adjustment-plan-card > .adjustment-review-photo { position: relative; display: block; overflow: hidden; height: 150px; margin: -7px -7px 4px; border-radius: 14px; }
+.adjustment-plan-card > .adjustment-review-photo[hidden] { display: none; }
+.adjustment-review-photo img { width: 100%; height: 100%; object-fit: cover; }
+.adjustment-review-photo small { position: absolute; right: 7px; bottom: 6px; left: 7px; padding: 5px 7px; border-radius: 8px; background: rgba(5,15,35,.76); color: white; letter-spacing: 0; }
+.adjustment-plan-card > .adjustment-plan-meta { color: #2e5b99; font-size: .75rem; font-weight: 750; line-height: 1.4; }
+.adjustment-schedule-preview { display: grid; gap: 0; overflow: hidden; border: 1px solid #c7d7ef; border-radius: 16px; background: white; }
+.adjustment-schedule-preview > strong { padding: 10px 13px; background: #edf4ff; color: var(--blue-2); font-size: .67rem; letter-spacing: .13em; }
+.adjustment-schedule-preview > div { display: flex; justify-content: space-between; gap: 12px; padding: 10px 13px; border-top: 1px solid var(--line); font-size: .77rem; }
+.adjustment-schedule-preview small { color: var(--muted); white-space: nowrap; }
+.adjustment-schedule-preview b { color: var(--blue-2); }
 .public-profile-fields { border-color: #bfd1fa; background: #f7f9ff; }
 .traveler-profile-content { min-height: 230px; }
 .traveler-profile-header { display: flex; align-items: center; gap: 15px; padding-right: 45px; }
@@ -600,6 +634,11 @@ h3 { margin-bottom: .25rem; font-size: 1.02rem; }
   .trip-adjustment-reasons button strong { font-size: .8rem; }
   .trip-adjustment-reasons button small { font-size: .68rem; }
   .adjustment-reason-icon { width: 38px; height: 38px; border-radius: 12px; }
+  .trip-adjustment-option { grid-template-columns: 76px minmax(0,1fr) 17px; gap: 10px; padding: 8px; border-radius: 16px; }
+  .trip-adjustment-option-media { width: 76px; height: 82px; border-radius: 12px; }
+  .trip-adjustment-option-copy strong { font-size: .82rem; }
+  .trip-adjustment-option-copy > span:not(:first-child) { font-size: .63rem; }
+  .adjustment-plan-card > .adjustment-review-photo { height: 135px; }
   .trip-hero { min-height: 360px; padding: 22px; }
   .trip-hero.has-active-trip { min-height: 278px; padding: 18px; border-radius: 24px; }
   .trip-hero.has-destination-photo .hero-copy { padding-top: 108px; }
