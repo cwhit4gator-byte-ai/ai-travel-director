@@ -98,6 +98,7 @@ export function createPlanner({ renderAll }) {
       pending.textContent = result.message;
       pending.classList.remove("pending");
       renderAll();
+      initializeChat();
     } catch (error) {
       console.error(error);
       trackAppError("trip_planner", error);

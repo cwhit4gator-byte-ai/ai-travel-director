@@ -467,6 +467,9 @@ test("app modules preserve startup and feature interactions", async t => {
     assert.equal(state.trip.itinerary.length, 3);
     assert.equal(state.trip.generatedBy, "local");
     assert.match(element("homeHeading").textContent, /Vienna/);
+    assert.equal(element("plannerHeading").textContent, "Ask about your trip");
+    assert.match(element("plannerTripContext").textContent, /Active trip · Vienna · 3 days/);
+    assert.match(element("plannerPrompts").innerHTML, /Improve route/);
   });
   await t.test("PWA installation and update detection use the new version", async () => {
     await window.emit("load");
